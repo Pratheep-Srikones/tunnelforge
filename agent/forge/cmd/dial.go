@@ -6,6 +6,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"tunnelforge/internal/proto"
 
@@ -101,13 +102,24 @@ func handShake(conn net.Conn) error {
 func handleStream(stream net.Conn) {
 	defer stream.Close()
 
-	buf := make([]byte, 1024)
-
-	n, err := stream.Read(buf)
+	localConn, err := net.Dial("tcp", "localhost:3000")
 	if err != nil {
-		fmt.Println("Stream read error:", err)
+		fmt.Println("Error dialling local connection: " + err.Error())
 		return
 	}
 
-	fmt.Println("Received from server:", string(buf[:n]))
+	defer localConn.Close()
+	fmt.Println("Connected to local connection")
+
+	go func() {
+		_, err := io.Copy(localConn, stream)
+		if err != nil {
+			fmt.Println("Error copying stream -> local:", err)
+		}
+	}()
+
+	_, err = io.Copy(stream, localConn)
+	if err != nil {
+		fmt.Println("Error copying local -> stream:", err)
+	}
 }

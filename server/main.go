@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"tunnelforge/internal/proto"
 	"tunnelforge/server/utils"
 
+	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/yamux"
 )
 
@@ -62,19 +65,6 @@ func handleAgent(conn net.Conn) {
 
 	agentSession.Store(req.Subdomain, session)
 
-	stream, err := session.Open()
-	if err != nil {
-		fmt.Println("Error opening stream:", err)
-		return
-	}
-
-	fmt.Println("Opened stream to agent")
-
-	_, err = stream.Write([]byte("hello from server"))
-	if err != nil {
-		fmt.Println("Error writing to stream:", err)
-		return
-	}
 
 	for {
 		stream, err := session.Accept()
@@ -121,7 +111,8 @@ func main() {
 	}
 	defer listner.Close()
 
-	for {
+	go func() {
+		for {
 		conn, err := listner.Accept()
 		if err != nil {
 			fmt.Println("Error accepting connection: " + err.Error())
@@ -129,5 +120,77 @@ func main() {
 		}
 		
 		go handleAgent(conn)
+		}
+	}()
+	
+	r := gin.Default()
+
+	r.Any("/test/:subdomain", proxyHandler)
+	r.Any("/test/:subdomain/*path", proxyHandler)
+
+	fmt.Println("Agent server listening on :" + PORT)
+	fmt.Println("HTTP server listening on :8000")
+
+	if err := r.Run(":8000"); err != nil {
+		panic(err)
+	}
+}
+
+func proxyHandler(c *gin.Context) {
+	subdomain := c.Param("subdomain")
+
+	fmt.Println("Incoming Request for: ", subdomain)
+
+	session, ok := agentSession.Load(subdomain)
+	if !ok {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"message": "agent is not connected",
+		})
+		return
+	}
+
+	stream, err := session.Open()
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"message": "failed to open tunnel stream",
+		})
+		return
+	}
+	defer stream.Close()
+
+	fmt.Println("Opened yamux stream for:", subdomain)
+
+	if err := c.Request.Write(stream); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"message": "failed to write request to agent",
+		})
+		return
+	}
+	
+	fmt.Println("Request forwarded to agent")
+
+	response, err := http.ReadResponse(
+		bufio.NewReader(stream),
+		c.Request,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"message": "failed to read response from agent",
+		})
+		return
+	}
+
+	defer response.Body.Close()
+
+	for key, values := range response.Header {
+		for _, value := range values {
+			c.Header(key, value)
+		}
+	}
+
+	c.Status(response.StatusCode)
+
+	if _, err := io.Copy(c.Writer, response.Body); err != nil {
+		fmt.Println("Error copying response body:", err)
 	}
 }
