@@ -7,8 +7,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
+	"time"
 	"tunnelforge/internal/proto"
-	"tunnelforge/server/utils"
+	"tunnelforge/server/tunnel"
 
 	"github.com/gin-gonic/gin"
 	"github.com/hashicorp/yamux"
@@ -16,8 +18,7 @@ import (
 
 const PORT = "7000"
 
-var agentSession = utils.NewThreadSafeSessionMap()
-
+var registry = tunnel.NewRegistry()
 func handleAgent(conn net.Conn) {
     defer conn.Close()
 
@@ -63,15 +64,24 @@ func handleAgent(conn net.Conn) {
 	}
 	defer session.Close()
 
-	agentSession.Store(req.Subdomain, session)
+	t := &tunnel.Tunnel{
+		ID:        fmt.Sprintf("%s-%d", req.Subdomain, time.Now().UnixNano()),
+		Subdomain: req.Subdomain,
+		Session:   session,
+		CreatedAt: time.Now(),
+	}
 
+	if !registry.Register(t) {
+		fmt.Println("Agent already registered:", req.Subdomain)
+		return
+	}
 
 	for {
 		stream, err := session.Accept()
 		if err != nil {
 			fmt.Println("Yamux session closed:", err)
 
-			agentSession.Delete(req.Subdomain)
+			registry.Remove(t)
 			return
 		}
 
@@ -125,8 +135,7 @@ func main() {
 	
 	r := gin.Default()
 
-	r.Any("/test/:subdomain", proxyHandler)
-	r.Any("/test/:subdomain/*path", proxyHandler)
+	r.Any("/*path", proxyHandler)
 
 	fmt.Println("Agent server listening on :" + PORT)
 	fmt.Println("HTTP server listening on :8000")
@@ -137,30 +146,44 @@ func main() {
 }
 
 func proxyHandler(c *gin.Context) {
-	subdomain := c.Param("subdomain")
 
-	fmt.Println("Incoming Request for: ", subdomain)
+	host:= c.Request.Host
+	req:= c.Request
 
-	session, ok := agentSession.Load(subdomain)
-	if !ok {
-		c.JSON(http.StatusBadGateway, gin.H{
-			"message": "agent is not connected",
+	host, _, _ = net.SplitHostPort(host)
+
+	parts := strings.Split(host, ".")
+	if len(parts) < 2 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "Invalid host",
 		})
 		return
 	}
 
+	subdomain := parts[0]
+
+	fmt.Println("Incoming request for:", subdomain)
+    fmt.Println("Path:", c.Request.URL.Path)
+
+	tunnel, ok := registry.Get(subdomain)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "agent not found",
+		})
+		return
+	}
+	session := tunnel.Session
 	stream, err := session.Open()
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "failed to open tunnel stream",
 		})
 		return
 	}
+
 	defer stream.Close()
 
-	fmt.Println("Opened yamux stream for:", subdomain)
-
-	if err := c.Request.Write(stream); err != nil {
+	if err := req.Write(stream); err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"message": "failed to write request to agent",
 		})
