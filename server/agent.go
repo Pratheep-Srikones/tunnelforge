@@ -6,14 +6,23 @@ import (
 	"io"
 	"net"
 	"time"
+	"tunnelforge/internal/config"
 	"tunnelforge/internal/proto"
 	"tunnelforge/server/tunnel"
 
 	"github.com/hashicorp/yamux"
 )
+const HandshakeTimeout = 10 * time.Second
 
 func handleAgent(conn net.Conn) {
 	defer conn.Close()
+
+	if err := conn.SetReadDeadline(
+		time.Now().Add(HandshakeTimeout),
+	); err != nil {
+		fmt.Println("Failed to set handshake deadline:", err)
+		return
+	}
 
 	req, err := receiveHandshake(conn)
 	if err != nil {
@@ -34,7 +43,12 @@ func handleAgent(conn net.Conn) {
 		return
 	}
 
-	session, err := yamux.Server(conn, nil)
+	if err := conn.SetDeadline(time.Time{}); err != nil {
+		fmt.Println("Failed to clear connection deadline:", err)
+		return
+	}	
+
+	session, err := yamux.Server(conn, config.YamuxConfig())
 	if err != nil {
 		fmt.Println("Failed to create yamux server:", err)
 		return
@@ -77,8 +91,8 @@ func receiveHandshake(conn net.Conn) (proto.HandshakeRequest, error) {
 		return req, fmt.Errorf("error decoding handshake: %w", err)
 	}
 
-	if req.Type != "handshake" {
-		return req, fmt.Errorf("invalid handshake type: %s", req.Type)
+	if err := req.Validate(); err != nil {
+		return req, fmt.Errorf("handshake validation failed: %w", err)
 	}
 
 	return req, nil
