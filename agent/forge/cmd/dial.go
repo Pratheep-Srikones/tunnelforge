@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
 var dialCmd = &cobra.Command{
 	Use:   "dial",
 	Short: "Create a tunnel to the TunnelForge server",

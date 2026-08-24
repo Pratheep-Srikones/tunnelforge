@@ -10,7 +10,7 @@ import (
 
 const PORT = "7000"
 
-var registry = tunnel.NewRegistry()
+var registry = tunnel.NewAgentRegistry()
 
 func main() {
 	listner, err := net.Listen("tcp", ":"+PORT)
@@ -21,16 +21,16 @@ func main() {
 
 	go func() {
 		for {
-		conn, err := listner.Accept()
-		if err != nil {
-			fmt.Println("Error accepting connection: " + err.Error())
-			continue
-		}
-		
-		go handleAgent(conn)
+			conn, err := listner.Accept()
+			if err != nil {
+				fmt.Println("Error accepting connection: " + err.Error())
+				continue
+			}
+
+			go handleAgent(conn)
 		}
 	}()
-	
+
 	r := gin.Default()
 
 	r.Any("/*path", proxyHandler)
@@ -42,4 +42,3 @@ func main() {
 		panic(err)
 	}
 }
-

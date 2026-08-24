@@ -3,7 +3,7 @@ package tunnel
 import "testing"
 
 func TestRegisterAndGet(t *testing.T) {
-	registry := NewRegistry()
+	registry := NewAgentRegistry()
 
 	tunnel := &Tunnel{
 		ID:        "1",
@@ -26,7 +26,7 @@ func TestRegisterAndGet(t *testing.T) {
 }
 
 func TestDuplicateSubdomain(t *testing.T) {
-	registry := NewRegistry()
+	registry := NewAgentRegistry()
 
 	first := &Tunnel{
 		ID:        "1",
@@ -48,7 +48,7 @@ func TestDuplicateSubdomain(t *testing.T) {
 }
 
 func TestRemoveDoesNotRemoveReplacement(t *testing.T) {
-	registry := NewRegistry()
+	registry := NewAgentRegistry()
 
 	first := &Tunnel{
 		ID:        "1",

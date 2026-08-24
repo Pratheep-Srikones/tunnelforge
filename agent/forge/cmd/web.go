@@ -20,26 +20,26 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	RunE: func(cmd *cobra.Command, args []string) error{
-		var port = "4040" 
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var port = "4040"
 		if len(args) > 0 {
 			port = args[0]
-		}else{
-			fmt.Println("Using default port "+port)
+		} else {
+			fmt.Println("Using default port " + port)
 		}
 		const staticDir = "../static"
 		fileserver := http.FileServer(http.Dir(staticDir))
 
-		http.Handle("/",fileserver)
+		http.Handle("/", fileserver)
 		http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 			if r.Method != "GET" {
-				 http.Error(w, "method is not supported", http.StatusBadGateway)
-  				 return
+				http.Error(w, "method is not supported", http.StatusBadGateway)
+				return
 			}
 			fmt.Fprint(w, "server is running and healthy")
 		})
 
-		fmt.Println("Web interface running on port "+port)
+		fmt.Println("Web interface running on port " + port)
 		return http.ListenAndServe(":"+port, nil)
 	},
 }

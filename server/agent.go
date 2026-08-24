@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/yamux"
 )
+
 const HandshakeTimeout = 10 * time.Second
 
 func handleAgent(conn net.Conn) {
@@ -46,7 +47,7 @@ func handleAgent(conn net.Conn) {
 	if err := conn.SetDeadline(time.Time{}); err != nil {
 		fmt.Println("Failed to clear connection deadline:", err)
 		return
-	}	
+	}
 
 	session, err := yamux.Server(conn, config.YamuxConfig())
 	if err != nil {
@@ -57,7 +58,7 @@ func handleAgent(conn net.Conn) {
 	defer session.Close()
 
 	t := &tunnel.Tunnel{
-		ID:        fmt.Sprintf(
+		ID: fmt.Sprintf(
 			"%s-%d",
 			req.Subdomain,
 			time.Now().UnixNano(),
@@ -83,9 +84,9 @@ func handleAgent(conn net.Conn) {
 }
 
 func receiveHandshake(conn net.Conn) (proto.HandshakeRequest, error) {
-	 var req proto.HandshakeRequest
+	var req proto.HandshakeRequest
 
-	 decoder := json.NewDecoder(conn)
+	decoder := json.NewDecoder(conn)
 
 	if err := decoder.Decode(&req); err != nil {
 		return req, fmt.Errorf("error decoding handshake: %w", err)

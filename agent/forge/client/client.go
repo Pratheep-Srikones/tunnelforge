@@ -21,19 +21,19 @@ const (
 )
 
 type Client struct {
-	ServerAddr string
-	Token string
-	Subdomain string
-	LocalAddr string
+	ServerAddr    string
+	Token         string
+	Subdomain     string
+	LocalAddr     string
 	MaxRetryCount int
 }
 
 func New(serverAddr, token, subDomain, localAddr string, maxRetryCount int) *Client {
 	return &Client{
-		ServerAddr: serverAddr,
-		Token: token,
-		Subdomain: subDomain,
-		LocalAddr: localAddr,
+		ServerAddr:    serverAddr,
+		Token:         token,
+		Subdomain:     subDomain,
+		LocalAddr:     localAddr,
 		MaxRetryCount: maxRetryCount,
 	}
 }
@@ -121,7 +121,6 @@ func (c *Client) connect(ctx context.Context) (net.Conn, error) {
 	dialer := net.Dialer{
 		Timeout: DialTimeout,
 	}
-
 
 	conn, err := dialer.DialContext(ctx,
 		"tcp",

@@ -21,7 +21,6 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, response)
 }
 
-
 func main() {
 	// Create a new request multiplexer (router)
 	mux := http.NewServeMux()

@@ -7,8 +7,8 @@ import (
 )
 
 type Tunnel struct {
-	ID string
+	ID        string
 	Subdomain string
-	Session *yamux.Session
+	Session   *yamux.Session
 	CreatedAt time.Time
 }

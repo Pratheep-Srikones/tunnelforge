@@ -2,18 +2,18 @@ package tunnel
 
 import "sync"
 
-type Registry struct {
-	mu sync.RWMutex
+type AgentRegistry struct {
+	mu      sync.RWMutex
 	tunnels map[string]*Tunnel
 }
 
-func NewRegistry() *Registry {
-	return &Registry{
+func NewAgentRegistry() *AgentRegistry {
+	return &AgentRegistry{
 		tunnels: make(map[string]*Tunnel),
 	}
 }
 
-func (r *Registry) Register(t *Tunnel) bool {
+func (r *AgentRegistry) Register(t *Tunnel) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -24,7 +24,7 @@ func (r *Registry) Register(t *Tunnel) bool {
 	return true
 }
 
-func (r *Registry) Get(subdomain string) (*Tunnel, bool) {
+func (r *AgentRegistry) Get(subdomain string) (*Tunnel, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -32,14 +32,14 @@ func (r *Registry) Get(subdomain string) (*Tunnel, bool) {
 	return t, ok
 }
 
-func (r *Registry) Delete(subdomain string) {
+func (r *AgentRegistry) Delete(subdomain string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	delete(r.tunnels, subdomain)
 }
 
-func (r *Registry) Remove(t *Tunnel) bool {
+func (r *AgentRegistry) Remove(t *Tunnel) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -56,7 +56,7 @@ func (r *Registry) Remove(t *Tunnel) bool {
 	return true
 }
 
-func (r *Registry) List() []*Tunnel {
+func (r *AgentRegistry) List() []*Tunnel {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -68,6 +68,6 @@ func (r *Registry) List() []*Tunnel {
 	return list
 }
 
-func (r *Registry) Len() int {
+func (r *AgentRegistry) Len() int {
 	return len(r.tunnels)
 }
