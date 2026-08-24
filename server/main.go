@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"tunnelforge/server/routes"
 	"tunnelforge/server/tunnel"
 
 	"github.com/gin-gonic/gin"
@@ -32,8 +33,10 @@ func main() {
 	}()
 
 	r := gin.Default()
+	internal := r.Group("/forge/internal")
+	routes.UseAuthRoutes(internal)
 
-	r.Any("/*path", proxyHandler)
+	r.NoRoute(proxyHandler)
 
 	fmt.Println("Agent server listening on :" + PORT)
 	fmt.Println("HTTP server listening on :8000")

@@ -3,6 +3,7 @@ package routes
 import (
 	"net/http"
 	"tunnelforge/internal/proto"
+	"tunnelforge/server/auth"
 	"tunnelforge/server/utils"
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +32,11 @@ func register(c *gin.Context) {
 
 	agentID := utils.GenerateAgentUUID()
 	token := utils.GenerateAgentToken()
+
+	if err := auth.Register(agentID, token); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to register agent"})
+		return
+	}
 
 	var res proto.RegisterResponse
 	res.AgentID = agentID
