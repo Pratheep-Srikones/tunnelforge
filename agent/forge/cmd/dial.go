@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 	"tunnelforge/agent/forge/client"
+	"tunnelforge/agent/forge/config"
 
 	"github.com/spf13/cobra"
 )
@@ -23,16 +24,19 @@ var dialCmd = &cobra.Command{
 		defer stop()
 
 		serverAddr, _ := cmd.Flags().GetString("server")
-		token, _ := cmd.Flags().GetString("token")
 		subdomain, _ := cmd.Flags().GetString("subdomain")
 		localAddr, _ := cmd.Flags().GetString("local-addr")
 		maxRetryCount, _ := cmd.Flags().GetInt("max-retries")
+
+		token := config.GetString("token")
+		agentID := config.GetString("agent_id")
 
 		c := client.New(
 			serverAddr,
 			token,
 			subdomain,
 			localAddr,
+			agentID,
 			maxRetryCount,
 		)
 

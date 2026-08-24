@@ -8,6 +8,7 @@ import (
 type HandshakeRequest struct {
 	Type      string `json:"type"`
 	Token     string `json:"token"`
+	AgentID   string `json:"agent_id"`
 	Subdomain string `json:"subdomain"`
 }
 
@@ -45,6 +46,12 @@ func (r HandshakeRequest) Validate() error {
 	if r.Token == "" {
 		return fmt.Errorf(
 			"token is required",
+		)
+	}
+
+	if r.AgentID == "" {
+		return fmt.Errorf(
+			"agent_id is required",
 		)
 	}
 

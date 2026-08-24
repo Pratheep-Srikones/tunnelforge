@@ -8,6 +8,7 @@ import (
 	"time"
 	"tunnelforge/internal/config"
 	"tunnelforge/internal/proto"
+	"tunnelforge/server/auth"
 	"tunnelforge/server/tunnel"
 
 	"github.com/hashicorp/yamux"
@@ -94,6 +95,15 @@ func receiveHandshake(conn net.Conn) (proto.HandshakeRequest, error) {
 
 	if err := req.Validate(); err != nil {
 		return req, fmt.Errorf("handshake validation failed: %w", err)
+	}
+
+	valid, err := auth.ValidateToken(req.AgentID, req.Token)
+	if err != nil {
+		return req, fmt.Errorf("token validation failed: %w", err)
+	}
+
+	if !valid {
+		return req, fmt.Errorf("invalid token")
 	}
 
 	return req, nil

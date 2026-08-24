@@ -25,15 +25,17 @@ type Client struct {
 	Token         string
 	Subdomain     string
 	LocalAddr     string
+	AgentID       string
 	MaxRetryCount int
 }
 
-func New(serverAddr, token, subDomain, localAddr string, maxRetryCount int) *Client {
+func New(serverAddr, token, subDomain, localAddr string, agentID string,maxRetryCount int) *Client {
 	return &Client{
 		ServerAddr:    serverAddr,
 		Token:         token,
 		Subdomain:     subDomain,
 		LocalAddr:     localAddr,
+		AgentID:       agentID,
 		MaxRetryCount: maxRetryCount,
 	}
 }
@@ -147,6 +149,7 @@ func (c *Client) handshake(ctx context.Context, conn net.Conn) error {
 		Type:      "handshake",
 		Token:     c.Token,
 		Subdomain: c.Subdomain,
+		AgentID:   c.AgentID,
 	}
 	if err := conn.SetWriteDeadline(
 		time.Now().Add(HandshakeTimeout),

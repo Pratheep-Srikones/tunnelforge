@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 	"tunnelforge/agent/forge/client"
+	"tunnelforge/agent/forge/config"
 	"tunnelforge/internal/proto"
 
 	"github.com/spf13/cobra"
@@ -23,7 +24,7 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	RunE: func(cmd *cobra.Command, args []string) error{
+	RunE: func(cmd *cobra.Command, args []string) error {
 		key, _ := cmd.Flags().GetString("enrollment-key")
 		serverAddr, _ := cmd.Flags().GetString("server")
 
@@ -31,13 +32,19 @@ to quickly create a Cobra application.`,
 		req := proto.RegisterRequest{EnrollmentKey: key}
 
 		var res proto.RegisterResponse
-		err := rc.Post(context.Background(),"/register", &req, &res)
+		err := rc.Post(context.Background(), "/register", &req, &res)
 		if err != nil {
 			return err
 		}
-		
-		fmt.Printf("Token: %s\nAgent ID: %s\n", res.Token, res.AgentID)
-		
+
+		if err := config.Set("agent_id", res.AgentID); err != nil {
+			return fmt.Errorf("failed to save agent_id to config: %w", err)
+		}
+		if err := config.Set("token", res.Token); err != nil {
+			return fmt.Errorf("failed to save token to config: %w", err)
+		}
+
+		fmt.Printf("Registered successfully!\nToken: %s\nAgent ID: %s\nConfig saved.\n", res.Token, res.AgentID)
 
 		return nil
 	},
