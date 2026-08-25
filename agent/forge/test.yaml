@@ -1,0 +1,5 @@
+tunnels:
+  test-app: 
+    local: localhost:3000
+  my-app: 
+    local: localhost:5173

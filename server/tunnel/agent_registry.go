@@ -1,6 +1,9 @@
 package tunnel
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 type AgentRegistry struct {
 	mu      sync.RWMutex
@@ -13,15 +16,20 @@ func NewAgentRegistry() *AgentRegistry {
 	}
 }
 
-func (r *AgentRegistry) Register(t *Tunnel) bool {
+func (r *AgentRegistry) Register(t *Tunnel) error {
+	if t == nil || t.Subdomain == "" {
+		return fmt.Errorf("invalid tunnel")
+	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if _, exists := r.tunnels[t.Subdomain]; exists {
-		return false
+		return fmt.Errorf("subdomain '%s' is already in use", t.Subdomain)
 	}
+
 	r.tunnels[t.Subdomain] = t
-	return true
+	return nil
 }
 
 func (r *AgentRegistry) Get(subdomain string) (*Tunnel, bool) {
@@ -32,28 +40,35 @@ func (r *AgentRegistry) Get(subdomain string) (*Tunnel, bool) {
 	return t, ok
 }
 
-func (r *AgentRegistry) Delete(subdomain string) {
+func (r *AgentRegistry) Remove(subdomain string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	delete(r.tunnels, subdomain)
 }
 
-func (r *AgentRegistry) Remove(t *Tunnel) bool {
+func (r *AgentRegistry) RemoveIfSame(subdomain, tunnelID string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	current, ok := r.tunnels[t.Subdomain]
+	current, ok := r.tunnels[subdomain]
 	if !ok {
 		return false
 	}
 
-	if current != t {
+	if current.ID != tunnelID {
 		return false
 	}
 
-	delete(r.tunnels, t.Subdomain)
+	delete(r.tunnels, subdomain)
 	return true
+}
+
+func (r *AgentRegistry) RemoveTunnel(t *Tunnel) bool {
+	if t == nil {
+		return false
+	}
+	return r.RemoveIfSame(t.Subdomain, t.ID)
 }
 
 func (r *AgentRegistry) List() []*Tunnel {
@@ -69,5 +84,8 @@ func (r *AgentRegistry) List() []*Tunnel {
 }
 
 func (r *AgentRegistry) Len() int {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	return len(r.tunnels)
 }

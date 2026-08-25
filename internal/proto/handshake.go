@@ -9,7 +9,7 @@ type HandshakeRequest struct {
 	Type      string `json:"type"`
 	Token     string `json:"token"`
 	AgentID   string `json:"agent_id"`
-	Subdomain string `json:"subdomain"`
+	Subdomain string `json:"subdomain,omitempty"`
 }
 
 type HandshakeResponse struct {
@@ -30,19 +30,6 @@ func (r HandshakeRequest) Validate() error {
 		)
 	}
 
-	if r.Subdomain == "" {
-		return fmt.Errorf(
-			"subdomain is required",
-		)
-	}
-
-	if err := ValidateSubdomain(r.Subdomain); err != nil {
-		return fmt.Errorf(
-			"subdomain validation: %w",
-			err,
-		)
-	}
-
 	if r.Token == "" {
 		return fmt.Errorf(
 			"token is required",
@@ -53,6 +40,15 @@ func (r HandshakeRequest) Validate() error {
 		return fmt.Errorf(
 			"agent_id is required",
 		)
+	}
+
+	if r.Subdomain != "" {
+		if err := ValidateSubdomain(r.Subdomain); err != nil {
+			return fmt.Errorf(
+				"subdomain validation: %w",
+				err,
+			)
+		}
 	}
 
 	return nil

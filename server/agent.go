@@ -31,14 +31,7 @@ func handleAgent(conn net.Conn) {
 		fmt.Println("Handshake failed:", err)
 		return
 	}
-	fmt.Println("Agent connected")
-	fmt.Println("  Subdomain:", req.Subdomain)
-
-	if _, exists := registry.Get(req.Subdomain); exists {
-		fmt.Println("Agent already registered:", req.Subdomain)
-		_ = sendHandshakeErrorResponse(conn, fmt.Sprintf("subdomain '%s' is already registered", req.Subdomain))
-		return
-	}
+	fmt.Println("Agent authenticated:", req.AgentID)
 
 	if err := sendHandshakeResponse(conn); err != nil {
 		fmt.Println("Failed to send handshake response:", err)
@@ -58,30 +51,110 @@ func handleAgent(conn net.Conn) {
 
 	defer session.Close()
 
-	t := &tunnel.Tunnel{
-		ID: fmt.Sprintf(
-			"%s-%d",
-			req.Subdomain,
-			time.Now().UnixNano(),
-		),
-		Subdomain: req.Subdomain,
-		Session:   session,
-		CreatedAt: time.Now(),
-	}
-
-	if !registry.Register(t) {
-		fmt.Println("Agent registration race detected for:", req.Subdomain)
+	// Accept initial stream as CONTROL stream
+	controlStream, err := session.Accept()
+	if err != nil {
+		fmt.Println("Failed to accept control stream:", err)
 		return
 	}
 
-	fmt.Println("Registered tunnel:", req.Subdomain)
+	registerReq, err := receiveTunnelRegister(controlStream)
+	if err != nil {
+		fmt.Println("Tunnel registration failed:", err)
+		_ = sendTunnelRegisterResponse(controlStream, false, nil, err.Error())
+		return
+	}
+
+	// Register all requested subdomains atomically.
+	tunnels, results, ok := registerSubdomains(req.AgentID, registerReq.Subdomains, session)
+
+	if err := sendTunnelRegisterResponse(controlStream, ok, results, ""); err != nil {
+		fmt.Println("Failed to send tunnel register response:", err)
+		rollbackTunnels(tunnels)
+		return
+	}
+
+	if !ok {
+		fmt.Println("Tunnel registration partially failed, rolled back")
+		rollbackTunnels(tunnels)
+		return
+	}
+
+	for _, t := range tunnels {
+		fmt.Printf("Registered tunnel '%s' for agent '%s'\n", t.Subdomain, t.AgentID)
+	}
 
 	defer func() {
-		registry.Remove(t)
-		fmt.Println("Tunnel removed:", req.Subdomain)
+		for _, t := range tunnels {
+			registry.RemoveIfSame(t.Subdomain, t.ID)
+			fmt.Println("Tunnel removed:", t.Subdomain)
+		}
 	}()
 
-	acceptStreams(session, req.Subdomain)
+	acceptStreams(session, req.AgentID)
+}
+
+// registerSubdomains attempts to register all subdomains atomically.
+// If any registration fails, all previously registered tunnels are
+// rolled back and the function returns ok=false.
+func registerSubdomains(
+	agentID string,
+	subdomains []string,
+	session *yamux.Session,
+) ([]*tunnel.Tunnel, map[string]proto.SubdomainResult, bool) {
+	results := make(map[string]proto.SubdomainResult, len(subdomains))
+	tunnels := make([]*tunnel.Tunnel, 0, len(subdomains))
+	allOK := true
+
+	for _, sub := range subdomains {
+		t := &tunnel.Tunnel{
+			ID: fmt.Sprintf(
+				"%s-%d",
+				sub,
+				time.Now().UnixNano(),
+			),
+			AgentID:   agentID,
+			Subdomain: sub,
+			Session:   session,
+			CreatedAt: time.Now(),
+		}
+
+		if err := registry.Register(t); err != nil {
+			results[sub] = proto.SubdomainResult{
+				OK:      false,
+				Message: err.Error(),
+			}
+			allOK = false
+			// Roll back everything registered so far
+			rollbackTunnels(tunnels)
+			tunnels = nil
+			// Fill remaining results as failed
+			for _, remaining := range subdomains {
+				if _, exists := results[remaining]; !exists {
+					results[remaining] = proto.SubdomainResult{
+						OK:      false,
+						Message: "rolled back due to sibling failure",
+					}
+				}
+			}
+			return tunnels, results, false
+		}
+
+		results[sub] = proto.SubdomainResult{
+			OK:      true,
+			Message: "registered",
+		}
+		tunnels = append(tunnels, t)
+	}
+
+	return tunnels, results, allOK
+}
+
+// rollbackTunnels removes all successfully registered tunnels.
+func rollbackTunnels(tunnels []*tunnel.Tunnel) {
+	for _, t := range tunnels {
+		registry.RemoveIfSame(t.Subdomain, t.ID)
+	}
 }
 
 func receiveHandshake(conn net.Conn) (proto.HandshakeRequest, error) {
@@ -125,35 +198,63 @@ func sendHandshakeResponse(conn net.Conn) error {
 	return nil
 }
 
-func sendHandshakeErrorResponse(conn net.Conn, msg string) error {
-	response := proto.HandshakeResponse{
-		Type:    "handshake_ack",
-		OK:      false,
+func receiveTunnelRegister(stream net.Conn) (proto.TunnelRegisterRequest, error) {
+	var req proto.TunnelRegisterRequest
+
+	if err := stream.SetReadDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
+		return req, fmt.Errorf("failed to set control stream deadline: %w", err)
+	}
+
+	decoder := json.NewDecoder(stream)
+	if err := decoder.Decode(&req); err != nil {
+		return req, fmt.Errorf("error decoding tunnel register request: %w", err)
+	}
+
+	if err := req.Validate(); err != nil {
+		return req, fmt.Errorf("tunnel register validation failed: %w", err)
+	}
+
+	if err := stream.SetReadDeadline(time.Time{}); err != nil {
+		return req, fmt.Errorf("failed to clear control stream deadline: %w", err)
+	}
+
+	return req, nil
+}
+
+func sendTunnelRegisterResponse(
+	stream net.Conn,
+	ok bool,
+	results map[string]proto.SubdomainResult,
+	msg string,
+) error {
+	response := proto.TunnelRegisterResponse{
+		Type:    "tunnel_register_ack",
+		OK:      ok,
+		Results: results,
 		Message: msg,
 	}
 
-	encoder := json.NewEncoder(conn)
-
+	encoder := json.NewEncoder(stream)
 	if err := encoder.Encode(response); err != nil {
-		return fmt.Errorf("error encoding handshake response: %w", err)
+		return fmt.Errorf("error encoding tunnel register response: %w", err)
 	}
 
 	return nil
 }
 
-func acceptStreams(session *yamux.Session, subdomain string) {
+func acceptStreams(session *yamux.Session, agentID string) {
 	for {
 		stream, err := session.Accept()
 		if err != nil {
 			fmt.Println(
-				"Yamux session closed:",
-				subdomain,
+				"Yamux session closed for agent:",
+				agentID,
 				err,
 			)
 			return
 		}
 
-		fmt.Println("New yamux stream from:", subdomain)
+		fmt.Println("New yamux stream from agent:", agentID)
 
 		go handleStream(stream)
 	}
@@ -164,7 +265,6 @@ func handleStream(stream net.Conn) {
 
 	fmt.Println("Stream opened")
 
-	// For now, just read whatever the agent sends.
 	buf := make([]byte, 1024)
 
 	for {

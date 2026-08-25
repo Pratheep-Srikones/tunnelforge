@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"tunnelforge/internal/proto"
 
 	"github.com/gin-gonic/gin"
 )
@@ -42,6 +43,14 @@ func proxyHandler(c *gin.Context) {
 	}
 
 	defer stream.Close()
+
+	// Write stream header so the agent knows which subdomain this request is for.
+	if err := proto.WriteStreamHeader(stream, subdomain); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"message": "failed to write stream header",
+		})
+		return
+	}
 
 	if err := forwardRequest(c.Request, stream); err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{

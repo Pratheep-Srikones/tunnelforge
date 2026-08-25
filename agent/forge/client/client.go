@@ -20,23 +20,26 @@ const (
 	MaxBackoff     = 60 * time.Second
 )
 
+// Client manages a single agent connection to the TunnelForge server.
+// It supports multiple subdomains, each mapped to a different local address.
 type Client struct {
 	ServerAddr    string
 	Token         string
-	Subdomain     string
-	LocalAddr     string
 	AgentID       string
 	MaxRetryCount int
+
+	// Tunnels maps subdomain → local address.
+	// e.g. {"test-app": "localhost:3000", "my-app": "localhost:5173"}
+	Tunnels map[string]string
 }
 
-func New(serverAddr, token, subDomain, localAddr string, agentID string,maxRetryCount int) *Client {
+func New(serverAddr, token, agentID string, maxRetryCount int, tunnels map[string]string) *Client {
 	return &Client{
 		ServerAddr:    serverAddr,
 		Token:         token,
-		Subdomain:     subDomain,
-		LocalAddr:     localAddr,
 		AgentID:       agentID,
 		MaxRetryCount: maxRetryCount,
+		Tunnels:       tunnels,
 	}
 }
 
@@ -110,6 +113,13 @@ func (c *Client) RunOnce(ctx context.Context) (bool, error) {
 
 	defer session.Close()
 
+	controlStream, err := c.registerTunnels(ctx, session)
+	if err != nil {
+		return false, err
+	}
+
+	defer controlStream.Close()
+
 	fmt.Println("Tunnel is running")
 
 	err = c.acceptStreams(ctx, session)
@@ -146,10 +156,9 @@ func (c *Client) handshake(ctx context.Context, conn net.Conn) error {
 		return err
 	}
 	req := proto.HandshakeRequest{
-		Type:      "handshake",
-		Token:     c.Token,
-		Subdomain: c.Subdomain,
-		AgentID:   c.AgentID,
+		Type:    "handshake",
+		Token:   c.Token,
+		AgentID: c.AgentID,
 	}
 	if err := conn.SetWriteDeadline(
 		time.Now().Add(HandshakeTimeout),
@@ -194,6 +203,71 @@ func (c *Client) handshake(ctx context.Context, conn net.Conn) error {
 	fmt.Println("Server:", response.Message)
 
 	return nil
+}
+
+// registerTunnels opens the control stream and registers all subdomains
+// with the server in a single request.
+func (c *Client) registerTunnels(
+	ctx context.Context,
+	session *yamux.Session,
+) (net.Conn, error) {
+	controlStream, err := session.Open()
+	if err != nil {
+		return nil, fmt.Errorf("opening control stream: %w", err)
+	}
+
+	subdomains := make([]string, 0, len(c.Tunnels))
+	for sub := range c.Tunnels {
+		subdomains = append(subdomains, sub)
+	}
+
+	req := proto.TunnelRegisterRequest{
+		Type:       "tunnel_register",
+		Subdomains: subdomains,
+	}
+
+	if err := controlStream.SetWriteDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
+		controlStream.Close()
+		return nil, fmt.Errorf("setting control stream write deadline: %w", err)
+	}
+
+	if err := json.NewEncoder(controlStream).Encode(req); err != nil {
+		controlStream.Close()
+		return nil, fmt.Errorf("sending tunnel registration: %w", err)
+	}
+
+	if err := controlStream.SetReadDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
+		controlStream.Close()
+		return nil, fmt.Errorf("setting control stream read deadline: %w", err)
+	}
+
+	var resp proto.TunnelRegisterResponse
+	if err := json.NewDecoder(controlStream).Decode(&resp); err != nil {
+		controlStream.Close()
+		return nil, fmt.Errorf("reading tunnel registration response: %w", err)
+	}
+
+	if !resp.OK {
+		// Print per-subdomain results for diagnostics
+		for sub, result := range resp.Results {
+			if !result.OK {
+				fmt.Printf("  %s: %s\n", sub, result.Message)
+			}
+		}
+		controlStream.Close()
+		return nil, fmt.Errorf("server rejected tunnel registration: %s", resp.Message)
+	}
+
+	if err := controlStream.SetDeadline(time.Time{}); err != nil {
+		controlStream.Close()
+		return nil, fmt.Errorf("clearing control stream deadline: %w", err)
+	}
+
+	for sub := range c.Tunnels {
+		fmt.Printf("Tunnel registered: %s → %s\n", sub, c.Tunnels[sub])
+	}
+
+	return controlStream, nil
 }
 
 func (c *Client) createSession(conn net.Conn) (*yamux.Session, error) {
