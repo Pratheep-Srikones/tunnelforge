@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// TODO: Identify mechanism to manage enrollment keys
 const SecretEnrollmentKey = "tf_enroll_xyz123"
 
 func UseAuthRoutes(rg *gin.RouterGroup) {

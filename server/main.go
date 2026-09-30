@@ -16,7 +16,7 @@ var registry = tunnel.NewAgentRegistry()
 func main() {
 	listner, err := net.Listen("tcp", ":"+PORT)
 	if err != nil {
-		panic("Error listening on port: " + err.Error())
+		panic("[Server] Error listening on port: " + err.Error())
 	}
 	defer listner.Close()
 
@@ -27,7 +27,7 @@ func main() {
 				fmt.Println("Error accepting connection: " + err.Error())
 				continue
 			}
-
+			// spawn new goroutine to handle the connection
 			go handleAgent(conn)
 		}
 	}()
@@ -38,8 +38,8 @@ func main() {
 
 	r.NoRoute(proxyHandler)
 
-	fmt.Println("Agent server listening on :" + PORT)
-	fmt.Println("HTTP server listening on :8000")
+	fmt.Println("[Server] Agent server listening on :" + PORT)
+	fmt.Println("[Server] HTTP server listening on :8000")
 
 	if err := r.Run(":8000"); err != nil {
 		panic(err)

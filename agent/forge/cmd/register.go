@@ -32,7 +32,7 @@ to quickly create a Cobra application.`,
 		req := proto.RegisterRequest{EnrollmentKey: key}
 
 		var res proto.RegisterResponse
-		err := rc.Post(context.Background(), "/register", &req, &res)
+		err := rc.Post(context.Background(), "/forge/internal/auth/register", &req, &res)
 		if err != nil {
 			return err
 		}
@@ -44,7 +44,7 @@ to quickly create a Cobra application.`,
 			return fmt.Errorf("failed to save token to config: %w", err)
 		}
 
-		fmt.Printf("Registered successfully!\nToken: %s\nAgent ID: %s\nConfig saved.\n", res.Token, res.AgentID)
+		fmt.Printf("[Register] Success!\nToken: %s\nAgent ID: %s\nConfig saved.\n", res.Token, res.AgentID)
 
 		return nil
 	},
@@ -53,15 +53,6 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(registerCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// registerCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// registerCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	registerCmd.Flags().StringP("enrollment-key", "e", "tf_enroll_xyz123", "Enrollmet key for agent registration")
-	registerCmd.Flags().StringP("server", "s","http://localhost:8000/forge/internal/auth", "Server address")
+	registerCmd.Flags().StringP("server", "s", "http://localhost:8000", "Server address")
 }

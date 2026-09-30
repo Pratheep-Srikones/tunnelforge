@@ -7,16 +7,16 @@ type TunnelRegisterRequest struct {
 	Subdomains []string `json:"subdomains"`
 }
 
-type SubdomainResult struct {
-	OK      bool   `json:"ok"`
-	Message string `json:"message,omitempty"`
-}
-
 type TunnelRegisterResponse struct {
 	Type    string                     `json:"type"`
 	OK      bool                       `json:"ok"`
 	Results map[string]SubdomainResult `json:"results,omitempty"`
 	Message string                     `json:"message,omitempty"`
+}
+
+type SubdomainResult struct {
+	OK      bool   `json:"ok"`
+	Message string `json:"message,omitempty"`
 }
 
 func (r TunnelRegisterRequest) Validate() error {

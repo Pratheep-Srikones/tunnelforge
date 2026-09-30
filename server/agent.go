@@ -22,30 +22,30 @@ func handleAgent(conn net.Conn) {
 	if err := conn.SetReadDeadline(
 		time.Now().Add(HandshakeTimeout),
 	); err != nil {
-		fmt.Println("Failed to set handshake deadline:", err)
+		fmt.Println("[Agent] Failed to set handshake deadline:", err)
 		return
 	}
 
 	req, err := receiveHandshake(conn)
 	if err != nil {
-		fmt.Println("Handshake failed:", err)
+		fmt.Println("[Agent] Handshake failed:", err)
 		return
 	}
-	fmt.Println("Agent authenticated:", req.AgentID)
+	fmt.Println("[Agent] Authenticated:", req.AgentID)
 
 	if err := sendHandshakeResponse(conn); err != nil {
-		fmt.Println("Failed to send handshake response:", err)
+		fmt.Println("[Agent] Failed to send handshake response:", err)
 		return
 	}
 
 	if err := conn.SetDeadline(time.Time{}); err != nil {
-		fmt.Println("Failed to clear connection deadline:", err)
+		fmt.Println("[Agent] Failed to clear connection deadline:", err)
 		return
 	}
 
 	session, err := yamux.Server(conn, config.YamuxConfig())
 	if err != nil {
-		fmt.Println("Failed to create yamux server:", err)
+		fmt.Println("[Agent] Failed to create yamux server:", err)
 		return
 	}
 
@@ -54,13 +54,13 @@ func handleAgent(conn net.Conn) {
 	// Accept initial stream as CONTROL stream
 	controlStream, err := session.Accept()
 	if err != nil {
-		fmt.Println("Failed to accept control stream:", err)
+		fmt.Println("[Agent] Failed to accept control stream:", err)
 		return
 	}
 
 	registerReq, err := receiveTunnelRegister(controlStream)
 	if err != nil {
-		fmt.Println("Tunnel registration failed:", err)
+		fmt.Println("[Agent] Tunnel registration failed:", err)
 		_ = sendTunnelRegisterResponse(controlStream, false, nil, err.Error())
 		return
 	}
@@ -69,25 +69,26 @@ func handleAgent(conn net.Conn) {
 	tunnels, results, ok := registerSubdomains(req.AgentID, registerReq.Subdomains, session)
 
 	if err := sendTunnelRegisterResponse(controlStream, ok, results, ""); err != nil {
-		fmt.Println("Failed to send tunnel register response:", err)
+		fmt.Println("[Agent] Failed to send tunnel register response:", err)
 		rollbackTunnels(tunnels)
 		return
 	}
 
 	if !ok {
-		fmt.Println("Tunnel registration partially failed, rolled back")
+		fmt.Println("[Agent] Tunnel registration partially failed, rolled back")
 		rollbackTunnels(tunnels)
 		return
 	}
 
 	for _, t := range tunnels {
-		fmt.Printf("Registered tunnel '%s' for agent '%s'\n", t.Subdomain, t.AgentID)
+		fmt.Printf("[Agent] Registered tunnel '%s' for agent '%s'\n", t.Subdomain, t.AgentID)
 	}
 
 	defer func() {
 		for _, t := range tunnels {
-			registry.RemoveIfSame(t.Subdomain, t.ID)
-			fmt.Println("Tunnel removed:", t.Subdomain)
+			if registry.RemoveIfSame(t.Subdomain, t.ID) {
+				fmt.Println("[Agent] Tunnel removed:", t.Subdomain)
+			}
 		}
 	}()
 
@@ -104,8 +105,33 @@ func registerSubdomains(
 ) ([]*tunnel.Tunnel, map[string]proto.SubdomainResult, bool) {
 	results := make(map[string]proto.SubdomainResult, len(subdomains))
 	tunnels := make([]*tunnel.Tunnel, 0, len(subdomains))
-	allOK := true
 
+	// 1. Pre-validation: ensure none of the requested subdomains are claimed by a DIFFERENT agent.
+	// This prevents evicting or mutating active tunnels if a sibling subdomain will cause the batch to fail.
+	for _, sub := range subdomains {
+		if existing, ok := registry.Get(sub); ok {
+			if existing.AgentID != agentID {
+				results[sub] = proto.SubdomainResult{
+					OK:      false,
+					Message: fmt.Sprintf("subdomain '%s' is already in use", sub),
+				}
+			}
+		}
+	}
+
+	if len(results) > 0 {
+		for _, sub := range subdomains {
+			if _, exists := results[sub]; !exists {
+				results[sub] = proto.SubdomainResult{
+					OK:      false,
+					Message: "rolled back due to sibling failure",
+				}
+			}
+		}
+		return nil, results, false
+	}
+
+	// 2. Register/replace tunnels
 	for _, sub := range subdomains {
 		t := &tunnel.Tunnel{
 			ID: fmt.Sprintf(
@@ -124,8 +150,7 @@ func registerSubdomains(
 				OK:      false,
 				Message: err.Error(),
 			}
-			allOK = false
-			// Roll back everything registered so far
+			// Roll back everything registered so far in this batch
 			rollbackTunnels(tunnels)
 			tunnels = nil
 			// Fill remaining results as failed
@@ -137,7 +162,7 @@ func registerSubdomains(
 					}
 				}
 			}
-			return tunnels, results, false
+			return nil, results, false
 		}
 
 		results[sub] = proto.SubdomainResult{
@@ -147,7 +172,7 @@ func registerSubdomains(
 		tunnels = append(tunnels, t)
 	}
 
-	return tunnels, results, allOK
+	return tunnels, results, true
 }
 
 // rollbackTunnels removes all successfully registered tunnels.

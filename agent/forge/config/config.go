@@ -44,14 +44,14 @@ func WriteConfig() error {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok || viper.ConfigFileUsed() == "" {
 			configPath, pathErr := GetConfigPath()
 			if pathErr != nil {
-				return pathErr
+				return fmt.Errorf("config path: %w", pathErr)
 			}
 			if err := ensurePathExists(configPath); err != nil {
-				return err
+				return fmt.Errorf("ensure path exists: %w", err)
 			}
 			return viper.WriteConfigAs(configPath + "/tunnel_forge.yaml")
 		}
-		return err
+		return fmt.Errorf("writing config file: %w", err)
 	}
 	return nil
 }

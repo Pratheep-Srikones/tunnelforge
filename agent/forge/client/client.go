@@ -58,7 +58,7 @@ func (c *Client) Run(ctx context.Context) error {
 			)
 		}
 
-		fmt.Println("Connecting to TunnelForge...")
+		fmt.Println("[Main] Connecting to TunnelForge...")
 
 		established, err := c.RunOnce(ctx)
 		if ctx.Err() != nil {
@@ -66,7 +66,7 @@ func (c *Client) Run(ctx context.Context) error {
 		}
 
 		if err != nil {
-			fmt.Println("Tunnel disconnected:", err)
+			fmt.Println("[Main] Tunnel disconnected:", err)
 		}
 
 		// The tunnel was successfully established.
@@ -120,7 +120,7 @@ func (c *Client) RunOnce(ctx context.Context) (bool, error) {
 
 	defer controlStream.Close()
 
-	fmt.Println("Tunnel is running")
+	fmt.Println("[Tunnel] Tunnel is running")
 
 	err = c.acceptStreams(ctx, session)
 
@@ -128,7 +128,10 @@ func (c *Client) RunOnce(ctx context.Context) (bool, error) {
 }
 
 func (c *Client) connect(ctx context.Context) (net.Conn, error) {
-	fmt.Println("Connecting to:", c.ServerAddr)
+	/*
+		connect to server by using direct tcp connection
+	*/
+	fmt.Println("[Connect] Connecting to:", c.ServerAddr)
 
 	dialer := net.Dialer{
 		Timeout: DialTimeout,
@@ -146,12 +149,18 @@ func (c *Client) connect(ctx context.Context) (net.Conn, error) {
 		)
 	}
 
-	fmt.Println("Connected to server")
+	fmt.Println("[Connect] Connected to server")
 
 	return conn, nil
 }
 
 func (c *Client) handshake(ctx context.Context, conn net.Conn) error {
+	/*
+			handshake with server
+		1. send handshake request
+		2. receive handshake response
+		3. check if handshake is successful
+	*/
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -160,21 +169,22 @@ func (c *Client) handshake(ctx context.Context, conn net.Conn) error {
 		Token:   c.Token,
 		AgentID: c.AgentID,
 	}
+
 	if err := conn.SetWriteDeadline(
 		time.Now().Add(HandshakeTimeout),
 	); err != nil {
-		return err
+		return fmt.Errorf("setting deadline: %w", err)
 	}
 	encoder := json.NewEncoder(conn)
 
 	if err := encoder.Encode(req); err != nil {
-		return fmt.Errorf("sending handshake: %w", err)
+		return fmt.Errorf("encoding request: %w", err)
 	}
 
 	if err := conn.SetReadDeadline(
 		time.Now().Add(HandshakeTimeout),
 	); err != nil {
-		return err
+		return fmt.Errorf("setting deadline: %w", err)
 	}
 
 	var response proto.HandshakeResponse
@@ -200,7 +210,7 @@ func (c *Client) handshake(ctx context.Context, conn net.Conn) error {
 		)
 	}
 
-	fmt.Println("Server:", response.Message)
+	fmt.Println("[HandShake] Server:", response.Message)
 
 	return nil
 }
@@ -211,6 +221,13 @@ func (c *Client) registerTunnels(
 	ctx context.Context,
 	session *yamux.Session,
 ) (net.Conn, error) {
+	/*
+		register tunnels with the server
+		1. open a control stream
+		2. send tunnel registration request
+		3. receive tunnel registration response
+		4. check if tunnel registration is successful
+	*/
 	controlStream, err := session.Open()
 	if err != nil {
 		return nil, fmt.Errorf("opening control stream: %w", err)
@@ -233,7 +250,7 @@ func (c *Client) registerTunnels(
 
 	if err := json.NewEncoder(controlStream).Encode(req); err != nil {
 		controlStream.Close()
-		return nil, fmt.Errorf("sending tunnel registration: %w", err)
+		return nil, fmt.Errorf("encoding tunnel registration request: %w", err)
 	}
 
 	if err := controlStream.SetReadDeadline(time.Now().Add(HandshakeTimeout)); err != nil {
@@ -251,7 +268,7 @@ func (c *Client) registerTunnels(
 		// Print per-subdomain results for diagnostics
 		for sub, result := range resp.Results {
 			if !result.OK {
-				fmt.Printf("  %s: %s\n", sub, result.Message)
+				fmt.Printf("[Tunnel Register] %s: %s\n", sub, result.Message)
 			}
 		}
 		controlStream.Close()
@@ -271,6 +288,9 @@ func (c *Client) registerTunnels(
 }
 
 func (c *Client) createSession(conn net.Conn) (*yamux.Session, error) {
+	/*
+		create a yamux session based on the tcp connection
+	*/
 	session, err := yamux.Client(conn, config.YamuxConfig())
 	if err != nil {
 		return nil, fmt.Errorf(
@@ -279,7 +299,7 @@ func (c *Client) createSession(conn net.Conn) (*yamux.Session, error) {
 		)
 	}
 
-	fmt.Println("Yamux session established")
+	fmt.Println("[Yamux] session established")
 
 	return session, nil
 }
@@ -288,6 +308,13 @@ func (c *Client) acceptStreams(
 	ctx context.Context,
 	session *yamux.Session,
 ) error {
+	/*
+		accept streams from the server
+		1. open a channel to receive streams
+		2. accept streams from the server
+		3. handle streams
+	*/
+
 	done := make(chan struct{})
 
 	go func() {
@@ -314,13 +341,18 @@ func (c *Client) acceptStreams(
 			)
 		}
 
-		fmt.Println("Incoming tunnel stream")
+		fmt.Println("[Stream] Incoming tunnel stream")
 
+		// spawn a new goroutine to handle the stream
 		go c.handleStream(stream)
 	}
 }
 
 func sleepContext(ctx context.Context, duration time.Duration) error {
+	/*
+		sleep for a given duration
+		if the context is cancelled, return the context error
+	*/
 	timer := time.NewTimer(duration)
 	defer timer.Stop()
 

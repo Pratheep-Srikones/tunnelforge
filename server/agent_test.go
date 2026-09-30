@@ -264,3 +264,111 @@ func TestAtomicRollbackOnPartialFailure(t *testing.T) {
 		t.Fatalf("expected 'claimed' to belong to '%s', got '%s'", agentID1, tun.AgentID)
 	}
 }
+
+func TestSameAgentReconnectSessionTakeover(t *testing.T) {
+	authReg := auth.GetAuthRegistry()
+	agentID := "agent_reconnect_user"
+	token := "token_reconnect_123"
+
+	if err := authReg.Register(agentID, token); err != nil {
+		t.Fatalf("failed to register agent: %v", err)
+	}
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start listener: %v", err)
+	}
+	defer listener.Close()
+
+	go func() {
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				return
+			}
+			go handleAgent(conn)
+		}
+	}()
+
+	subdomain := "takeover-app"
+
+	// 1. First session connects and registers
+	ctx1, cancel1 := context.WithCancel(context.Background())
+	defer cancel1()
+
+	c1 := client.New(
+		listener.Addr().String(),
+		token,
+		agentID,
+		1,
+		map[string]string{subdomain: "localhost:3000"},
+	)
+
+	s1ErrCh := make(chan error, 1)
+	go func() {
+		_, err := c1.RunOnce(ctx1)
+		s1ErrCh <- err
+	}()
+
+	tun1, ok := waitForTunnel(subdomain, 2*time.Second)
+	if !ok {
+		t.Fatalf("expected initial tunnel %q to be registered", subdomain)
+	}
+	initialID := tun1.ID
+
+	// 2. Second session from the SAME agent connects for the SAME subdomain
+	// (Simulating agent reconnecting before old session times out)
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	defer cancel2()
+
+	c2 := client.New(
+		listener.Addr().String(),
+		token,
+		agentID,
+		1,
+		map[string]string{subdomain: "localhost:4000"},
+	)
+
+	s2ErrCh := make(chan error, 1)
+	go func() {
+		_, err := c2.RunOnce(ctx2)
+		s2ErrCh <- err
+	}()
+
+	// Wait for replacement tunnel to be active in registry
+	var tun2 *tunnel.Tunnel
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if t, ok := registry.Get(subdomain); ok && t.ID != initialID {
+			tun2 = t
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+
+	if tun2 == nil {
+		t.Fatalf("expected tunnel %q to be replaced with new session", subdomain)
+	}
+	if tun2.ID == initialID {
+		t.Fatalf("expected new tunnel ID, but still had old ID %s", initialID)
+	}
+
+	// 3. Verify Session 1 was terminated cleanly because it was replaced
+	select {
+	case <-s1ErrCh:
+		// S1 exited because its yamux session was closed
+	case <-time.After(2 * time.Second):
+		t.Log("Note: S1 took longer than 2s to unblock after eviction")
+	}
+
+	// 4. Verify tunnel is STILL registered (S1's deferred RemoveIfSame did not delete it)
+	time.Sleep(100 * time.Millisecond)
+	tunAfter, ok := registry.Get(subdomain)
+	if !ok {
+		t.Fatalf("expected tunnel %q to remain registered after old session teardown", subdomain)
+	}
+	if tunAfter.ID != tun2.ID {
+		t.Fatalf("expected tunnel ID %s, got %s", tun2.ID, tunAfter.ID)
+	}
+}
+

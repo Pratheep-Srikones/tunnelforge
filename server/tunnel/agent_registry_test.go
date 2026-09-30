@@ -103,3 +103,47 @@ func TestRemoveIfSameDoesNotRemoveReplacement(t *testing.T) {
 		t.Fatal("tunnel should be removed")
 	}
 }
+
+func TestSameAgentReconnectReplacesTunnel(t *testing.T) {
+	registry := NewAgentRegistry()
+
+	first := &Tunnel{
+		ID:        "first_id",
+		AgentID:   "agent_xyz",
+		Subdomain: "my_site",
+	}
+
+	second := &Tunnel{
+		ID:        "second_id",
+		AgentID:   "agent_xyz",
+		Subdomain: "my_site",
+	}
+
+	if err := registry.Register(first); err != nil {
+		t.Fatalf("first registration failed: %v", err)
+	}
+
+	// Re-registering with the SAME AgentID should succeed without manual removal
+	if err := registry.Register(second); err != nil {
+		t.Fatalf("expected same agent to replace existing tunnel, got: %v", err)
+	}
+
+	got, ok := registry.Get("my_site")
+	if !ok {
+		t.Fatal("expected tunnel to exist after replacement")
+	}
+	if got.ID != "second_id" {
+		t.Fatalf("expected tunnel ID 'second_id', got '%s'", got.ID)
+	}
+
+	// Old session cleanup should not remove the replacement
+	if registry.RemoveIfSame("my_site", first.ID) {
+		t.Fatal("RemoveIfSame with old ID should return false and not delete new tunnel")
+	}
+
+	gotAfter, ok := registry.Get("my_site")
+	if !ok || gotAfter.ID != "second_id" {
+		t.Fatal("second tunnel was incorrectly removed by old session cleanup")
+	}
+}
+

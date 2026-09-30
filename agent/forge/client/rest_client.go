@@ -246,10 +246,12 @@ func (c *RESTClient) BuildRequestURL(suffix string, query string, additionalComp
 	var url strings.Builder
 	url.WriteString(c.ServerURL)
 	if suffix != "" {
-		url.WriteString("/" + suffix)
+		url.WriteString("/")
+		url.WriteString(suffix)
 	}
 	for _, path := range additionalComps {
-		url.WriteString("/" + path)
+		url.WriteString("/")
+		url.WriteString(path)
 	}
 	if query != "" {
 		url.WriteString(query)
@@ -268,4 +270,3 @@ func GetHTTPClient(insecureSkipVerify bool, timeout time.Duration) *http.Client 
 	}
 	return client
 }
-
