@@ -43,6 +43,13 @@ Examples:
 		defer stop()
 
 		serverAddr, _ := cmd.Flags().GetString("server")
+		if serverAddr == "" {
+			serverAddr = config.GetString("server")
+		}
+
+		if serverAddr == "" {
+			return fmt.Errorf("server address not found. Please run 'forge register' first")
+		}
 		maxRetryCount, _ := cmd.Flags().GetInt("max-retries")
 
 		token, _ := cmd.Flags().GetString("token")
@@ -162,7 +169,7 @@ func normalizeLocalAddr(addr string) string {
 func init() {
 	rootCmd.AddCommand(upCmd)
 
-	upCmd.Flags().StringP("server", "s", "localhost:7000", "Server address")
+	upCmd.Flags().StringP("server", "s", "", "Server address")
 	upCmd.Flags().StringP("to", "t", "", "Local destination port or address (e.g. 3000, localhost:3000)")
 	upCmd.Flags().StringP("local-addr", "l", "", "Local address (alias for --to)")
 	upCmd.Flags().StringP("subdomain", "d", "", "Subdomain for single tunnel mode")

@@ -467,3 +467,163 @@ func TestProxy_EndToEnd_MultiTunnel(t *testing.T) {
 	})
 }
 
+func TestProxy_ForwardingHeaders(t *testing.T) {
+	// 1. Mock backend verifying X-Forwarded-* headers (FR-04-2)
+	mockBackend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		res := map[string]string{
+			"x_forwarded_for":   r.Header.Get("X-Forwarded-For"),
+			"x_forwarded_proto": r.Header.Get("X-Forwarded-Proto"),
+			"x_tunnel_host":     r.Header.Get("X-Tunnel-Host"),
+			"x_forwarded_host":  r.Header.Get("X-Forwarded-Host"),
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(res)
+	}))
+	defer mockBackend.Close()
+
+	authReg := auth.GetAuthRegistry()
+	agentID := "agent_proxy_headers"
+	token := "token_proxy_headers_123"
+	_ = authReg.Register(agentID, token)
+
+	agentListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start listener: %v", err)
+	}
+	defer agentListener.Close()
+
+	go func() {
+		conn, err := agentListener.Accept()
+		if err != nil {
+			return
+		}
+		handleAgent(conn)
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	subdomain := "headers-app"
+	c := client.New(
+		agentListener.Addr().String(),
+		token,
+		agentID,
+		1,
+		map[string]string{subdomain: mockBackend.Listener.Addr().String()},
+	)
+
+	go func() {
+		_, _ = c.RunOnce(ctx)
+	}()
+
+	if _, ok := waitForTunnel(subdomain, 3*time.Second); !ok {
+		t.Fatalf("timed out waiting for tunnel %q to register", subdomain)
+	}
+
+	router := setupTestProxyRouter()
+	proxyServer := httptest.NewServer(router)
+	defer proxyServer.Close()
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, proxyServer.URL+"/check-headers", nil)
+	req.Host = subdomain + ".example.com"
+
+	resp, err := proxyServer.Client().Do(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	var headers map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&headers); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if headers["x_forwarded_for"] == "" {
+		t.Error("expected X-Forwarded-For to be injected")
+	}
+	if headers["x_forwarded_proto"] != "http" {
+		t.Errorf("expected X-Forwarded-Proto 'http', got %q", headers["x_forwarded_proto"])
+	}
+	if headers["x_tunnel_host"] != subdomain+".example.com" {
+		t.Errorf("expected X-Tunnel-Host '%s.example.com', got %q", subdomain, headers["x_tunnel_host"])
+	}
+	if headers["x_forwarded_host"] != subdomain+".example.com" {
+		t.Errorf("expected X-Forwarded-Host '%s.example.com', got %q", subdomain, headers["x_forwarded_host"])
+	}
+}
+
+func TestProxy_LocalBackendDown(t *testing.T) {
+	// 1. Point tunnel to an unreachable local port where no backend is listening
+	unreachableAddr := "127.0.0.1:59999"
+
+	authReg := auth.GetAuthRegistry()
+	agentID := "agent_proxy_down"
+	token := "token_proxy_down_123"
+	_ = authReg.Register(agentID, token)
+
+	agentListener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to start listener: %v", err)
+	}
+	defer agentListener.Close()
+
+	go func() {
+		conn, err := agentListener.Accept()
+		if err != nil {
+			return
+		}
+		handleAgent(conn)
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	subdomain := "down-app"
+	c := client.New(
+		agentListener.Addr().String(),
+		token,
+		agentID,
+		1,
+		map[string]string{subdomain: unreachableAddr},
+	)
+
+	go func() {
+		_, _ = c.RunOnce(ctx)
+	}()
+
+	if _, ok := waitForTunnel(subdomain, 3*time.Second); !ok {
+		t.Fatalf("timed out waiting for tunnel %q to register", subdomain)
+	}
+
+	router := setupTestProxyRouter()
+	proxyServer := httptest.NewServer(router)
+	defer proxyServer.Close()
+
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, proxyServer.URL+"/ping", nil)
+	req.Host = subdomain + ".example.com"
+
+	resp, err := proxyServer.Client().Do(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadGateway {
+		t.Fatalf("expected status 502 Bad Gateway when local backend is down, got %d", resp.StatusCode)
+	}
+
+	var res map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		t.Fatalf("failed to decode response JSON: %v", err)
+	}
+
+	if res["message"] != "local service unreachable" {
+		t.Errorf("expected message 'local service unreachable', got %q", res["message"])
+	}
+}
+
+

@@ -43,8 +43,11 @@ to quickly create a Cobra application.`,
 		if err := config.Set("token", res.Token); err != nil {
 			return fmt.Errorf("failed to save token to config: %w", err)
 		}
+		if err := config.Set("server", serverAddr); err != nil {
+			return fmt.Errorf("failed to save server to config: %w", err)
+		}
 
-		fmt.Printf("[Register] Success!\nToken: %s\nAgent ID: %s\nConfig saved.\n", res.Token, res.AgentID)
+		fmt.Printf("[Register] Success!\nToken: %s\nAgent ID: %s\nConfig saved.\n", "********", res.AgentID)
 
 		return nil
 	},

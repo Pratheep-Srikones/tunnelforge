@@ -52,17 +52,20 @@ func proxyHandler(c *gin.Context) {
 		return
 	}
 
-	if err := forwardRequest(c.Request, stream); err != nil {
+	if err := forwardRequest(c, stream); err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{
 			"message": "failed to forward request to agent",
 		})
 		return
 	}
 
-	fmt.Println("Request forwarded to agent")
+	fmt.Println("[Proxy] Request forwarded to agent")
 
 	if err := forwardResponse(c, stream); err != nil {
-		fmt.Println("Error forwarding response:", err)
+		fmt.Println("[Proxy] Error forwarding response:", err)
+		c.JSON(http.StatusBadGateway, gin.H{
+			"message": "local service unreachable",
+		})
 	}
 }
 
@@ -94,7 +97,30 @@ func extractSubdomain(host string) (string, error) {
 	return parts[0], nil
 }
 
-func forwardRequest(req *http.Request, stream net.Conn) error {
+func forwardRequest(c *gin.Context, stream net.Conn) error {
+	req := c.Request
+
+	// Inject forwarding headers (FR-04-2)
+	clientIP := c.ClientIP()
+	if xff := req.Header.Get("X-Forwarded-For"); xff != "" {
+		req.Header.Set("X-Forwarded-For", xff+", "+clientIP)
+	} else if clientIP != "" {
+		req.Header.Set("X-Forwarded-For", clientIP)
+	}
+
+	scheme := "http"
+	if req.TLS != nil || req.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	req.Header.Set("X-Forwarded-Proto", scheme)
+
+	if req.Host != "" {
+		req.Header.Set("X-Tunnel-Host", req.Host)
+		if req.Header.Get("X-Forwarded-Host") == "" {
+			req.Header.Set("X-Forwarded-Host", req.Host)
+		}
+	}
+
 	if err := req.Write(stream); err != nil {
 		return fmt.Errorf("writing request: %w", err)
 	}

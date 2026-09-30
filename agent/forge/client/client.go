@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 	"tunnelforge/internal/config"
 	"tunnelforge/internal/proto"
@@ -127,11 +128,32 @@ func (c *Client) RunOnce(ctx context.Context) (bool, error) {
 	return true, err
 }
 
+func NormalizeTCPAddr(rawAddr string) string {
+	addr := strings.TrimSpace(rawAddr)
+	if idx := strings.Index(addr, "://"); idx != -1 {
+		addr = addr[idx+3:]
+	}
+	if idx := strings.Index(addr, "/"); idx != -1 {
+		addr = addr[:idx]
+	}
+
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = addr
+		port = "7000"
+	} else if port == "8000" {
+		port = "7000"
+	}
+
+	return net.JoinHostPort(host, port)
+}
+
 func (c *Client) connect(ctx context.Context) (net.Conn, error) {
 	/*
 		connect to server by using direct tcp connection
 	*/
-	fmt.Println("[Connect] Connecting to:", c.ServerAddr)
+	targetAddr := NormalizeTCPAddr(c.ServerAddr)
+	fmt.Println("[Connect] Connecting to:", targetAddr)
 
 	dialer := net.Dialer{
 		Timeout: DialTimeout,
@@ -139,12 +161,12 @@ func (c *Client) connect(ctx context.Context) (net.Conn, error) {
 
 	conn, err := dialer.DialContext(ctx,
 		"tcp",
-		c.ServerAddr,
+		targetAddr,
 	)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"connect to %s: %w",
-			c.ServerAddr,
+			targetAddr,
 			err,
 		)
 	}
