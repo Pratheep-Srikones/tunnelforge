@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -74,5 +75,34 @@ func TestGetRoutingDetails_DefaultViperConfig(t *testing.T) {
 	}
 	if tunnels["my-app"] != "localhost:5173" {
 		t.Errorf("expected localhost:5173 for my-app, got %s", tunnels["my-app"])
+	}
+}
+
+func TestCheckHealth(t *testing.T) {
+	// Test offline/empty
+	if checkLocalHealth("") {
+		t.Error("expected false for empty address")
+	}
+	if checkServerHealth("") {
+		t.Error("expected false for empty server address")
+	}
+	if checkLocalHealth("127.0.0.1:59999") {
+		t.Error("expected false for non-listening address")
+	}
+
+	// Start temporary listener
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
+	}
+	defer l.Close()
+
+	addr := l.Addr().String()
+
+	if !checkLocalHealth(addr) {
+		t.Errorf("expected checkLocalHealth(%s) to be true", addr)
+	}
+	if !checkServerHealth(addr) {
+		t.Errorf("expected checkServerHealth(%s) to be true", addr)
 	}
 }

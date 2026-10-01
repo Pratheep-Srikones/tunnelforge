@@ -5,8 +5,11 @@ package cmd
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"sort"
+	"time"
+	"tunnelforge/agent/forge/client"
 	"tunnelforge/agent/forge/config"
 
 	"github.com/spf13/cobra"
@@ -17,7 +20,7 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show status and routing details of the TunnelForge agent",
 	Long: `Display the current authentication status, connected server details,
-agent ID, and active tunnel routing details configured for the TunnelForge agent.`,
+agent ID, connection health, and active tunnel routing details configured for the TunnelForge agent.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		server := config.GetString("server")
 		agent_id := config.GetString("agent_id")
@@ -27,7 +30,12 @@ agent ID, and active tunnel routing details configured for the TunnelForge agent
 			return nil
 		}
 		fmt.Println("Authenticated")
-		fmt.Printf("Connected Server: %s\n", server)
+
+		serverStatus := "[OFFLINE - Cannot reach server]"
+		if checkServerHealth(server) {
+			serverStatus = "[ONLINE]"
+		}
+		fmt.Printf("Connected Server: %s %s\n", server, serverStatus)
 		fmt.Printf("Agent ID: %s\n", agent_id)
 
 		tunnels, err := getRoutingDetails()
@@ -45,11 +53,41 @@ agent ID, and active tunnel routing details configured for the TunnelForge agent
 			}
 			sort.Strings(subdomains)
 			for _, sub := range subdomains {
-				fmt.Printf("  %s -> %s\n", sub, tunnels[sub])
+				localAddr := tunnels[sub]
+				if checkLocalHealth(localAddr) {
+					fmt.Printf("  %s -> %s [ONLINE]\n", sub, localAddr)
+				} else {
+					fmt.Printf("  %s -> %s [OFFLINE - local service not running]\n", sub, localAddr)
+				}
 			}
 		}
 		return nil
 	},
+}
+
+func checkServerHealth(serverAddr string) bool {
+	if serverAddr == "" {
+		return false
+	}
+	target := client.NormalizeTCPAddr(serverAddr)
+	conn, err := net.DialTimeout("tcp", target, 2*time.Second)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
+}
+
+func checkLocalHealth(localAddr string) bool {
+	if localAddr == "" {
+		return false
+	}
+	conn, err := net.DialTimeout("tcp", localAddr, 1*time.Second)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }
 
 // getRoutingDetails reads the tunnel configuration (from either the config
