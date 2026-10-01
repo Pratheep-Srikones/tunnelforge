@@ -33,8 +33,14 @@ type Client struct {
 
 	// Tunnels maps subdomain → local address.
 	// e.g. {"test-app": "localhost:3000", "my-app": "localhost:5173"}
-	Tunnels  map[string]tunnel.TunnelEntry
-	Capturer capture.Capturer
+	Tunnels     map[string]tunnel.TunnelEntry
+	Capturer    capture.Capturer
+	Broadcaster Broadcaster
+}
+
+// Broadcaster is an interface for sending live event notifications to connected dashboards.
+type Broadcaster interface {
+	BroadcastJSON(v any) error
 }
 
 func New(serverAddr, token, agentID string, maxRetryCount int, tunnels map[string]tunnel.TunnelEntry, capturer capture.Capturer) *Client {
@@ -46,6 +52,12 @@ func New(serverAddr, token, agentID string, maxRetryCount int, tunnels map[strin
 		Tunnels:       tunnels,
 		Capturer:      capturer,
 	}
+}
+
+// WithBroadcaster attaches a live event broadcaster (e.g. WebSocket Hub) to the client.
+func (c *Client) WithBroadcaster(b Broadcaster) *Client {
+	c.Broadcaster = b
+	return c
 }
 
 // ToTunnelEntries converts a simple subdomain -> local address map into a map of TunnelEntry structs.

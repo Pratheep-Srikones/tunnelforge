@@ -167,6 +167,13 @@ func (c *Client) forwardWithCapture(
 			Truncated:       truncated,
 		}
 		_ = c.Capturer.Push(subdomain, entry)
+		if c.Broadcaster != nil {
+			_ = c.Broadcaster.BroadcastJSON(map[string]any{
+				"type":      "request",
+				"subdomain": subdomain,
+				"entry":     entry,
+			})
+		}
 	}()
 
 	return nil

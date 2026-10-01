@@ -3,15 +3,18 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 	"tunnelforge/agent/forge/capture"
 	"tunnelforge/agent/forge/client"
 	"tunnelforge/agent/forge/config"
+	"tunnelforge/agent/forge/ui"
 
 	"github.com/spf13/cobra"
 )
@@ -73,6 +76,20 @@ Examples:
 			}
 		}
 
+		uiServer := ui.NewServer("4040", ringBuffer, tunnels)
+		go func() {
+			if err := uiServer.Start(); err != nil && err != http.ErrServerClosed {
+				fmt.Printf("[UI] Server error: %v\n", err)
+			}
+		}()
+
+		go func() {
+			<-ctx.Done()
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			_ = uiServer.Stop(shutdownCtx)
+		}()
+
 		c := client.New(
 			serverAddr,
 			token,
@@ -80,7 +97,7 @@ Examples:
 			maxRetryCount,
 			tunnels,
 			ringBuffer,
-		)
+		).WithBroadcaster(uiServer.Hub)
 
 		return c.Run(ctx)
 	},
