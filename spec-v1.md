@@ -920,38 +920,38 @@ This is a slow side project. Each milestone should be independently shippable.
 
 ### Milestone 0 — Skeleton (1–2 weekends)
 
-- [ ] Repository setup, go.mod, Makefile
-- [ ] `internal/proto` — handshake types only
-- [ ] `internal/config` — parse tunnels.yaml
-- [ ] `cmd/server` and `cmd/agent` main.go stubs that compile and print version
+- [x] Repository setup, go.mod, Makefile
+- [x] `internal/proto` — handshake types only
+- [x] `internal/config` — parse tunnels.yaml
+- [x] `cmd/server` and `cmd/agent` main.go stubs that compile and print version
 - [ ] Basic README with project vision
 
 ### Milestone 1 — Raw Tunnel Works (2–3 weekends)
 
 - [ ] TLS listener on server (:7000)
 - [ ] TLS dialer on agent
-- [ ] Handshake implementation (send/receive, auth check)
-- [ ] yamux session on both sides
-- [ ] Single HTTP tunnel working (no UI, no config file yet)
-- [ ] Manual testing: `curl https://myapp.tunnel.yourdomain.com` hits `localhost:3000`
+- [x] Handshake implementation (send/receive, auth check)
+- [x] yamux session on both sides
+- [x] Single HTTP tunnel working (no UI, no config file yet)
+- [x] Manual testing: `curl https://myapp.tunnel.yourdomain.com` hits `localhost:3000`
 
 ### Milestone 2 — Production-Ready Tunneling (2–3 weekends)
 
-- [ ] Multi-tunnel support (multiple subdomains per agent session)
+- [x] Multi-tunnel support (multiple subdomains per agent session)
 - [ ] TCP tunnel type
 - [ ] WebSocket transport fallback
-- [ ] Reconnect with exponential backoff
-- [ ] `tunnels.yaml` config file loading
+- [x] Reconnect with exponential backoff
+- [x] `tunnels.yaml` config file loading
 - [ ] Wildcard TLS via autocert
 - [ ] systemd service + deploy scripts
-- [ ] Server deploys and runs stably on Oracle VPS
+- [x] Server deploys and runs stably on Oracle VPS
 
 ### Milestone 3 — CLI & Observability (1–2 weekends)
 
-- [ ] `forge up`, `forge up <name>`, `forge status` commands
+- [x] `forge up`, `forge up <name>`, `forge status` commands
 - [ ] `forge token generate`
 - [ ] Structured JSON logging on server
-- [ ] Human-readable logging on agent
+- [x] Human-readable logging on agent
 - [ ] `/health` endpoint on both binaries
 - [ ] Admin API (list sessions, disconnect)
 
