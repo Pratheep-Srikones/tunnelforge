@@ -37,7 +37,6 @@ func generateToken(length int) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-
 // Recommended OWASP parameters for Argon2id
 type params struct {
 	memory      uint32
@@ -110,5 +109,3 @@ func VerifyToken(token, encodedHash string) (bool, error) {
 	}
 	return false, nil
 }
-
-

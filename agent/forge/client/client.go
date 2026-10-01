@@ -7,6 +7,8 @@ import (
 	"net"
 	"strings"
 	"time"
+	"tunnelforge/agent/forge/capture"
+	tunnel "tunnelforge/agent/forge/config"
 	"tunnelforge/internal/config"
 	"tunnelforge/internal/proto"
 
@@ -31,17 +33,45 @@ type Client struct {
 
 	// Tunnels maps subdomain → local address.
 	// e.g. {"test-app": "localhost:3000", "my-app": "localhost:5173"}
-	Tunnels map[string]string
+	Tunnels     map[string]tunnel.TunnelEntry
+	Capturer    capture.Capturer
+	Broadcaster Broadcaster
 }
 
-func New(serverAddr, token, agentID string, maxRetryCount int, tunnels map[string]string) *Client {
+// Broadcaster is an interface for sending live event notifications to connected dashboards.
+type Broadcaster interface {
+	BroadcastJSON(v any) error
+}
+
+func New(serverAddr, token, agentID string, maxRetryCount int, tunnels map[string]tunnel.TunnelEntry, capturer capture.Capturer) *Client {
 	return &Client{
 		ServerAddr:    serverAddr,
 		Token:         token,
 		AgentID:       agentID,
 		MaxRetryCount: maxRetryCount,
 		Tunnels:       tunnels,
+		Capturer:      capturer,
 	}
+}
+
+// WithBroadcaster attaches a live event broadcaster (e.g. WebSocket Hub) to the client.
+func (c *Client) WithBroadcaster(b Broadcaster) *Client {
+	c.Broadcaster = b
+	return c
+}
+
+// ToTunnelEntries converts a simple subdomain -> local address map into a map of TunnelEntry structs.
+func ToTunnelEntries(m map[string]string) map[string]tunnel.TunnelEntry {
+	res := make(map[string]tunnel.TunnelEntry, len(m))
+	for k, v := range m {
+		res[k] = tunnel.TunnelEntry{Local: v}
+	}
+	return res
+}
+
+// NewSimple creates a Client with a basic map of subdomains to local addresses and no capture.
+func NewSimple(serverAddr, token, agentID string, maxRetryCount int, tunnels map[string]string) *Client {
+	return New(serverAddr, token, agentID, maxRetryCount, ToTunnelEntries(tunnels), nil)
 }
 
 func (c *Client) Run(ctx context.Context) error {
@@ -303,7 +333,7 @@ func (c *Client) registerTunnels(
 	}
 
 	for sub := range c.Tunnels {
-		fmt.Printf("Tunnel registered: %s → %s\n", sub, c.Tunnels[sub])
+		fmt.Printf("Tunnel registered: %s → %s\n", sub, c.Tunnels[sub].Local)
 	}
 
 	return controlStream, nil

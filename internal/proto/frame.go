@@ -36,6 +36,12 @@ func WriteStreamHeader(w io.Writer, subdomain string) error {
 
 // ReadStreamHeader reads the binary frame header from a Yamux data
 // stream and returns the subdomain it targets.
+//
+// Header Format:
+//
+//	[1 byte: subdomain length (uint8)] [N bytes: subdomain UTF-8]
+//
+// Max subdomain length is 63 bytes (DNS label limit).
 func ReadStreamHeader(r io.Reader) (string, error) {
 	lenBuf := make([]byte, 1)
 	if _, err := io.ReadFull(r, lenBuf); err != nil {

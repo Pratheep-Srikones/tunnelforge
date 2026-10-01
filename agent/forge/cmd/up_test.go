@@ -70,11 +70,11 @@ func TestResolveTunnels_ConfigFileAll(t *testing.T) {
 	if len(tunnels) != 2 {
 		t.Fatalf("expected 2 tunnels, got %d", len(tunnels))
 	}
-	if tunnels["api"] != "localhost:8080" {
-		t.Errorf("expected localhost:8080 for api, got %s", tunnels["api"])
+	if tunnels["api"].Local != "localhost:8080" {
+		t.Errorf("expected localhost:8080 for api, got %s", tunnels["api"].Local)
 	}
-	if tunnels["web"] != "localhost:3000" {
-		t.Errorf("expected localhost:3000 for web, got %s", tunnels["web"])
+	if tunnels["web"].Local != "localhost:3000" {
+		t.Errorf("expected localhost:3000 for web, got %s", tunnels["web"].Local)
 	}
 
 	absPath, err := filepath.Abs(configPath)

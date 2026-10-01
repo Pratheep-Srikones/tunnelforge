@@ -1,5 +1,9 @@
 tunnels:
   test-app: 
     local: localhost:3000
+    capture: true
+    capture_limit: 100
   my-app: 
     local: localhost:5173
+    capture: true
+    capture_limit: 200

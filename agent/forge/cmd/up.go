@@ -3,14 +3,18 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
+	"tunnelforge/agent/forge/capture"
 	"tunnelforge/agent/forge/client"
 	"tunnelforge/agent/forge/config"
+	"tunnelforge/agent/forge/ui"
 
 	"github.com/spf13/cobra"
 )
@@ -65,13 +69,35 @@ Examples:
 			return err
 		}
 
+		ringBuffer := capture.NewRingBuffer(capture.DefaultMaxRequests)
+		for sub, entry := range tunnels {
+			if entry.CaptureLimit > 0 {
+				ringBuffer.SetLimit(sub, entry.CaptureLimit)
+			}
+		}
+
+		uiServer := ui.NewServer("4040", ringBuffer, tunnels)
+		go func() {
+			if err := uiServer.Start(); err != nil && err != http.ErrServerClosed {
+				fmt.Printf("[UI] Server error: %v\n", err)
+			}
+		}()
+
+		go func() {
+			<-ctx.Done()
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			_ = uiServer.Stop(shutdownCtx)
+		}()
+
 		c := client.New(
 			serverAddr,
 			token,
 			agentID,
 			maxRetryCount,
 			tunnels,
-		)
+			ringBuffer,
+		).WithBroadcaster(uiServer.Hub)
 
 		return c.Run(ctx)
 	},
@@ -79,7 +105,7 @@ Examples:
 
 // resolveTunnels builds the subdomain → local address mapping from either CLI flags,
 // positional arguments, or a YAML configuration file.
-func resolveTunnels(cmd *cobra.Command) (map[string]string, error) {
+func resolveTunnels(cmd *cobra.Command) (map[string]config.TunnelEntry, error) {
 	tunnelConfigFile, _ := cmd.Flags().GetString("config")
 
 	if tunnelConfigFile != "" {
@@ -93,9 +119,10 @@ func resolveTunnels(cmd *cobra.Command) (map[string]string, error) {
 			_ = config.Set("active_config", absPath)
 		}
 
-		tunnelMap := make(map[string]string, len(cfg.Tunnels))
+		tunnelMap := make(map[string]config.TunnelEntry, len(cfg.Tunnels))
 		for sub, entry := range cfg.Tunnels {
-			tunnelMap[sub] = normalizeLocalAddr(entry.Local)
+			entry.Local = normalizeLocalAddr(entry.Local)
+			tunnelMap[sub] = entry
 		}
 		return tunnelMap, nil
 	}
