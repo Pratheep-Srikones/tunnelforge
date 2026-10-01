@@ -10,7 +10,9 @@ import (
 
 // TunnelEntry defines a single tunnel mapping.
 type TunnelEntry struct {
-	Local string `yaml:"local"`
+	Local        string `yaml:"local"`
+	Capture      bool   `yaml:"capture"`
+	CaptureLimit int    `yaml:"capture_limit"`
 }
 
 // TunnelConfig represents a user-authored YAML tunnel definition file.
@@ -20,8 +22,12 @@ type TunnelEntry struct {
 //	tunnels:
 //	  test-app:
 //	    local: localhost:3000
+//	    capture: true
+//	    capture_limit: 100
 //	  my-app:
 //	    local: localhost:5173
+//	    capture: true
+//	    capture_limit: 200
 type TunnelConfig struct {
 	Tunnels map[string]TunnelEntry `yaml:"tunnels"`
 }

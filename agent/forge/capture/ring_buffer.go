@@ -8,19 +8,32 @@ import (
 const DefaultMaxRequests = 200
 
 type RingBuffer struct {
-	mu   sync.RWMutex
-	size int
-	data map[string][]*RequestEntry
+	mu          sync.RWMutex
+	defaultSize int
+	limits      map[string]int
+	data        map[string][]*RequestEntry
 }
 
-func NewRingBuffer(max int) *RingBuffer {
-	if max <= 0 {
-		max = DefaultMaxRequests
+func NewRingBuffer(dsize int) *RingBuffer {
+	if dsize <= 0 {
+		dsize = DefaultMaxRequests
 	}
 
 	return &RingBuffer{
-		data: make(map[string][]*RequestEntry),
-		size: max,
+		data:        make(map[string][]*RequestEntry),
+		defaultSize: dsize,
+		limits:      make(map[string]int),
+	}
+}
+
+func (r *RingBuffer) SetLimit(subdomain string, limit int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if limit > 0 {
+		r.limits[subdomain] = limit
+	} else {
+		delete(r.limits, subdomain)
 	}
 }
 
@@ -42,10 +55,15 @@ func (r *RingBuffer) Push(subdomain string, re *RequestEntry) error {
 
 	entries, ok := r.data[subdomain]
 	if !ok {
-		entries = make([]*RequestEntry, 0, r.size)
+		entries = make([]*RequestEntry, 0, r.defaultSize)
 	}
 
-	if len(entries) >= r.size {
+	limit := r.defaultSize
+	if customLimit, exists := r.limits[subdomain]; exists && customLimit > 0 {
+		limit = customLimit
+	}
+
+	if len(entries) >= limit {
 		// Shift left to evict oldest entry at index 0
 		copy(entries, entries[1:])
 		entries[len(entries)-1] = re

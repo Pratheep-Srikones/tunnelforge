@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"tunnelforge/agent/forge/capture"
 	"tunnelforge/agent/forge/client"
 	"tunnelforge/agent/forge/config"
 
@@ -65,12 +66,20 @@ Examples:
 			return err
 		}
 
+		ringBuffer := capture.NewRingBuffer(capture.DefaultMaxRequests)
+		for sub, entry := range tunnels {
+			if entry.CaptureLimit > 0 {
+				ringBuffer.SetLimit(sub, entry.CaptureLimit)
+			}
+		}
+
 		c := client.New(
 			serverAddr,
 			token,
 			agentID,
 			maxRetryCount,
 			tunnels,
+			ringBuffer,
 		)
 
 		return c.Run(ctx)
@@ -79,7 +88,7 @@ Examples:
 
 // resolveTunnels builds the subdomain → local address mapping from either CLI flags,
 // positional arguments, or a YAML configuration file.
-func resolveTunnels(cmd *cobra.Command) (map[string]string, error) {
+func resolveTunnels(cmd *cobra.Command) (map[string]config.TunnelEntry, error) {
 	tunnelConfigFile, _ := cmd.Flags().GetString("config")
 
 	if tunnelConfigFile != "" {
@@ -93,9 +102,10 @@ func resolveTunnels(cmd *cobra.Command) (map[string]string, error) {
 			_ = config.Set("active_config", absPath)
 		}
 
-		tunnelMap := make(map[string]string, len(cfg.Tunnels))
+		tunnelMap := make(map[string]config.TunnelEntry, len(cfg.Tunnels))
 		for sub, entry := range cfg.Tunnels {
-			tunnelMap[sub] = normalizeLocalAddr(entry.Local)
+			entry.Local = normalizeLocalAddr(entry.Local)
+			tunnelMap[sub] = entry
 		}
 		return tunnelMap, nil
 	}

@@ -146,4 +146,3 @@ func TestSameAgentReconnectReplacesTunnel(t *testing.T) {
 		t.Fatal("second tunnel was incorrectly removed by old session cleanup")
 	}
 }
-

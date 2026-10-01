@@ -63,7 +63,7 @@ func TestAgentMultiSubdomainRegistration(t *testing.T) {
 		"my-app":   "localhost:5173",
 	}
 
-	c := client.New(
+	c := client.NewSimple(
 		listener.Addr().String(),
 		rawToken,
 		agentID,
@@ -143,7 +143,7 @@ func TestDuplicateSubdomainRegistration(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	defer cancel1()
 
-	c1 := client.New(
+	c1 := client.NewSimple(
 		listener.Addr().String(),
 		token,
 		agentID1,
@@ -164,7 +164,7 @@ func TestDuplicateSubdomainRegistration(t *testing.T) {
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	defer cancel2()
 
-	c2 := client.New(
+	c2 := client.NewSimple(
 		listener.Addr().String(),
 		token,
 		agentID2,
@@ -211,7 +211,7 @@ func TestAtomicRollbackOnPartialFailure(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	defer cancel1()
 
-	c1 := client.New(
+	c1 := client.NewSimple(
 		listener.Addr().String(),
 		token,
 		agentID1,
@@ -234,7 +234,7 @@ func TestAtomicRollbackOnPartialFailure(t *testing.T) {
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	defer cancel2()
 
-	c2 := client.New(
+	c2 := client.NewSimple(
 		listener.Addr().String(),
 		token,
 		agentID2,
@@ -296,7 +296,7 @@ func TestSameAgentReconnectSessionTakeover(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	defer cancel1()
 
-	c1 := client.New(
+	c1 := client.NewSimple(
 		listener.Addr().String(),
 		token,
 		agentID,
@@ -321,7 +321,7 @@ func TestSameAgentReconnectSessionTakeover(t *testing.T) {
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	defer cancel2()
 
-	c2 := client.New(
+	c2 := client.NewSimple(
 		listener.Addr().String(),
 		token,
 		agentID,
@@ -371,4 +371,3 @@ func TestSameAgentReconnectSessionTakeover(t *testing.T) {
 		t.Fatalf("expected tunnel ID %s, got %s", tun2.ID, tunAfter.ID)
 	}
 }
-

@@ -95,4 +95,3 @@ func ValidateToken(agentID, token string) (bool, error) {
 func Delete(agentID string) {
 	GetAuthRegistry().Delete(agentID)
 }
-

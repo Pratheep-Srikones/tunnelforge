@@ -69,7 +69,7 @@ func TestProxy_EndToEnd_GET(t *testing.T) {
 	defer cancel()
 
 	subdomain := "my-app"
-	c := client.New(
+	c := client.NewSimple(
 		agentListener.Addr().String(),
 		token,
 		agentID,
@@ -232,7 +232,7 @@ func TestProxy_EndToEnd_POST(t *testing.T) {
 	defer cancel()
 
 	subdomain := "api-service"
-	c := client.New(
+	c := client.NewSimple(
 		agentListener.Addr().String(),
 		token,
 		agentID,
@@ -395,7 +395,7 @@ func TestProxy_EndToEnd_MultiTunnel(t *testing.T) {
 		"app-two": backend2.Listener.Addr().String(),
 	}
 
-	c := client.New(
+	c := client.NewSimple(
 		agentListener.Addr().String(),
 		token,
 		agentID,
@@ -504,7 +504,7 @@ func TestProxy_ForwardingHeaders(t *testing.T) {
 	defer cancel()
 
 	subdomain := "headers-app"
-	c := client.New(
+	c := client.NewSimple(
 		agentListener.Addr().String(),
 		token,
 		agentID,
@@ -583,7 +583,7 @@ func TestProxy_LocalBackendDown(t *testing.T) {
 	defer cancel()
 
 	subdomain := "down-app"
-	c := client.New(
+	c := client.NewSimple(
 		agentListener.Addr().String(),
 		token,
 		agentID,
@@ -625,5 +625,3 @@ func TestProxy_LocalBackendDown(t *testing.T) {
 		t.Errorf("expected message 'local service unreachable', got %q", res["message"])
 	}
 }
-
-

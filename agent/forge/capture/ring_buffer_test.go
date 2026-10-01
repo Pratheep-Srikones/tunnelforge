@@ -10,18 +10,18 @@ import (
 
 func TestNewRingBuffer(t *testing.T) {
 	rbDefault := NewRingBuffer(0)
-	if rbDefault.size != DefaultMaxRequests {
-		t.Fatalf("expected default size %d, got %d", DefaultMaxRequests, rbDefault.size)
+	if rbDefault.defaultSize != DefaultMaxRequests {
+		t.Fatalf("expected default size %d, got %d", DefaultMaxRequests, rbDefault.defaultSize)
 	}
 
 	rbNegative := NewRingBuffer(-10)
-	if rbNegative.size != DefaultMaxRequests {
-		t.Fatalf("expected default size %d for negative input, got %d", DefaultMaxRequests, rbNegative.size)
+	if rbNegative.defaultSize != DefaultMaxRequests {
+		t.Fatalf("expected default size %d for negative input, got %d", DefaultMaxRequests, rbNegative.defaultSize)
 	}
 
 	rbCustom := NewRingBuffer(500)
-	if rbCustom.size != 500 {
-		t.Fatalf("expected custom size 500, got %d", rbCustom.size)
+	if rbCustom.defaultSize != 500 {
+		t.Fatalf("expected custom size 500, got %d", rbCustom.defaultSize)
 	}
 }
 
