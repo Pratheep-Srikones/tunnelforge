@@ -928,8 +928,8 @@ This is a slow side project. Each milestone should be independently shippable.
 
 ### Milestone 1 — Raw Tunnel Works (2–3 weekends)
 
-- [ ] TLS listener on server (:7000)
-- [ ] TLS dialer on agent
+- [x] (TLS) listener on server (:7000)
+- [x] (TLS) dialer on agent
 - [x] Handshake implementation (send/receive, auth check)
 - [x] yamux session on both sides
 - [x] Single HTTP tunnel working (no UI, no config file yet)
@@ -938,7 +938,7 @@ This is a slow side project. Each milestone should be independently shippable.
 ### Milestone 2 — Production-Ready Tunneling (2–3 weekends)
 
 - [x] Multi-tunnel support (multiple subdomains per agent session)
-- [ ] TCP tunnel type
+- [x] TCP tunnel type
 - [ ] WebSocket transport fallback
 - [x] Reconnect with exponential backoff
 - [x] `tunnels.yaml` config file loading

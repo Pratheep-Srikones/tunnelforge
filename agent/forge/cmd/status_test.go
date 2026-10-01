@@ -5,20 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 	"tunnelforge/agent/forge/config"
-
-	"github.com/spf13/cobra"
 )
 
-func newTestStatusCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:  "status",
-		RunE: statusCmd.RunE,
-	}
-	cmd.Flags().StringP("config", "c", "", "Path to tunnel config YAML file")
-	return cmd
-}
-
-func TestGetRoutingDetails_ConfigFile(t *testing.T) {
+func TestGetRoutingDetails_ActiveConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "tunnels.yaml")
 	content := `tunnels:
@@ -31,10 +20,12 @@ func TestGetRoutingDetails_ConfigFile(t *testing.T) {
 		t.Fatalf("failed to write test config: %v", err)
 	}
 
-	cmd := newTestStatusCmd()
-	_ = cmd.Flags().Set("config", configPath)
+	_ = config.Set("active_config", configPath)
+	defer func() {
+		_ = config.Delete("active_config")
+	}()
 
-	tunnels, err := getRoutingDetails(cmd)
+	tunnels, err := getRoutingDetails()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -50,18 +41,20 @@ func TestGetRoutingDetails_ConfigFile(t *testing.T) {
 	}
 }
 
-func TestGetRoutingDetails_NonExistentConfigFile(t *testing.T) {
-	cmd := newTestStatusCmd()
-	_ = cmd.Flags().Set("config", "/nonexistent/tunnels.yaml")
+func TestGetRoutingDetails_NonExistentActiveConfig(t *testing.T) {
+	_ = config.Set("active_config", "/nonexistent/tunnels.yaml")
+	defer func() {
+		_ = config.Delete("active_config")
+	}()
 
-	_, err := getRoutingDetails(cmd)
+	_, err := getRoutingDetails()
 	if err == nil {
-		t.Fatal("expected error for nonexistent config file")
+		t.Fatal("expected error for nonexistent active_config file")
 	}
 }
 
 func TestGetRoutingDetails_DefaultViperConfig(t *testing.T) {
-	cmd := newTestStatusCmd()
+	_ = config.Delete("active_config")
 	_ = config.Set("tunnels", map[string]any{
 		"my-app": map[string]any{
 			"local": "localhost:5173",
@@ -71,7 +64,7 @@ func TestGetRoutingDetails_DefaultViperConfig(t *testing.T) {
 		_ = config.Delete("tunnels")
 	}()
 
-	tunnels, err := getRoutingDetails(cmd)
+	tunnels, err := getRoutingDetails()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

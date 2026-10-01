@@ -30,7 +30,7 @@ agent ID, and active tunnel routing details configured for the TunnelForge agent
 		fmt.Printf("Connected Server: %s\n", server)
 		fmt.Printf("Agent ID: %s\n", agent_id)
 
-		tunnels, err := getRoutingDetails(cmd)
+		tunnels, err := getRoutingDetails()
 		if err != nil {
 			return err
 		}
@@ -55,10 +55,8 @@ agent ID, and active tunnel routing details configured for the TunnelForge agent
 // getRoutingDetails reads the tunnel configuration (from either the config
 // file or the global config) and returns a map of subdomain to normalized
 // local address.
-func getRoutingDetails(cmd *cobra.Command) (map[string]string, error) {
-	configFile, _ := cmd.Flags().GetString("config")
-
-	targetConfig := configFile
+func getRoutingDetails() (map[string]string, error) {
+	targetConfig := config.GetString("active_config")
 	if targetConfig == "" {
 		if _, err := os.Stat("tunnels.yaml"); err == nil {
 			targetConfig = "tunnels.yaml"
@@ -101,6 +99,4 @@ func getRoutingDetails(cmd *cobra.Command) (map[string]string, error) {
 
 func init() {
 	rootCmd.AddCommand(statusCmd)
-
-	statusCmd.Flags().StringP("config", "c", "", "Path to tunnel config YAML file")
 }
