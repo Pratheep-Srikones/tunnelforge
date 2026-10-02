@@ -84,8 +84,16 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/requests", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodDelete {
 			subdomain := r.URL.Query().Get("subdomain")
-			if subdomain != "" && s.Capturer != nil {
-				_ = s.Capturer.Clear(subdomain)
+			if s.Capturer != nil {
+				if subdomain != "" {
+					_ = s.Capturer.Clear(subdomain)
+				} else {
+					s.mu.RLock()
+					for sub := range s.Tunnels {
+						_ = s.Capturer.Clear(sub)
+					}
+					s.mu.RUnlock()
+				}
 			}
 			w.WriteHeader(http.StatusNoContent)
 			return
