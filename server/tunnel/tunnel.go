@@ -7,9 +7,9 @@ import (
 )
 
 type Tunnel struct {
-	ID        string
-	AgentID   string
-	Subdomain string
-	Session   *yamux.Session
-	CreatedAt time.Time
+	ID        string         `json:"id"`
+	AgentID   string         `json:"agent_id"`
+	Subdomain string         `json:"subdomain"`
+	Session   *yamux.Session `json:"-"`
+	CreatedAt time.Time      `json:"connected_at"`
 }

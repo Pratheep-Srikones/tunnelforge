@@ -949,11 +949,11 @@ This is a slow side project. Each milestone should be independently shippable.
 ### Milestone 3 — CLI & Observability (1–2 weekends)
 
 - [x] `forge up`, `forge up <name>`, `forge status` commands
-- [ ] `forge token generate`
+- [ ] ~~`forge token generate`~~
 - [ ] Structured JSON logging on server
 - [x] Human-readable logging on agent
-- [ ] `/health` endpoint on both binaries
-- [ ] Admin API (list sessions, disconnect)
+- [x] `/health` endpoint on both binaries
+- [x] Admin API (list sessions, disconnect)
 
 ### Milestone 4 — Request Capture & UI (2–3 weekends)
 

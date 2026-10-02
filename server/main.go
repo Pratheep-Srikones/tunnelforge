@@ -35,6 +35,7 @@ func main() {
 	r := gin.Default()
 	internal := r.Group("/forge/internal")
 	routes.UseAuthRoutes(internal)
+	routes.UseInternalRoutes(internal, registry)
 
 	r.NoRoute(proxyHandler)
 

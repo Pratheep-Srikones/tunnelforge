@@ -12,6 +12,18 @@ type AgentRegistry struct {
 	tunnels map[string]*Tunnel
 }
 
+var (
+	defaultAgentRegistry     *AgentRegistry
+	defaultAgentRegistryOnce sync.Once
+)
+
+func GetAgentRegistry() *AgentRegistry {
+	defaultAgentRegistryOnce.Do(func() {
+		defaultAgentRegistry = NewAgentRegistry()
+	})
+	return defaultAgentRegistry
+}
+
 func NewAgentRegistry() *AgentRegistry {
 	return &AgentRegistry{
 		tunnels: make(map[string]*Tunnel),
