@@ -14,6 +14,7 @@ import (
 	"time"
 	"tunnelforge/agent/forge/capture"
 	tunnel "tunnelforge/agent/forge/config"
+	"tunnelforge/agent/forge/replay"
 )
 
 //go:embed static/*
@@ -24,13 +25,14 @@ type Server struct {
 	Port       string
 	Hub        *Hub
 	Capturer   capture.Capturer
+	Replayer   *replay.Replayer
 	Tunnels    map[string]tunnel.TunnelEntry
 	mu         sync.RWMutex
 	httpServer *http.Server
 	listener   net.Listener
 }
 
-func NewServer(port string, capturer capture.Capturer, tunnels map[string]tunnel.TunnelEntry) *Server {
+func NewServer(port string, capturer capture.Capturer, tunnels map[string]tunnel.TunnelEntry, replayer *replay.Replayer) *Server {
 	if port == "" {
 		port = "4040"
 	}
@@ -40,6 +42,7 @@ func NewServer(port string, capturer capture.Capturer, tunnels map[string]tunnel
 		Hub:      hub,
 		Capturer: capturer,
 		Tunnels:  tunnels,
+		Replayer: replayer,
 	}
 }
 
@@ -136,6 +139,66 @@ func (s *Server) Handler() http.Handler {
 		}
 
 		_ = json.NewEncoder(w).Encode(allEntries)
+	})
+
+	mux.HandleFunc("/api/requests/replay", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var reqBody replay.ReplayRequest
+		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if s.Replayer == nil {
+			http.Error(w, "replayer not available", http.StatusInternalServerError)
+			return
+		}
+
+		entry, err := s.Capturer.Get(reqBody.Subdomain, reqBody.RequestID)
+		if err != nil {
+			http.Error(w, "request not found", http.StatusNotFound)
+			return
+		}
+
+		s.mu.RLock()
+		tunnel, ok := s.Tunnels[reqBody.Subdomain]
+		s.mu.RUnlock()
+		if !ok || tunnel.Local == "" {
+			http.Error(w, "unknown tunnel subdomain or local address not configured", http.StatusBadRequest)
+			return
+		}
+
+		localAddr := tunnel.Local
+		replayedEntry, err := s.Replayer.Replay(localAddr, entry)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("failed to replay request: %v", err), http.StatusBadGateway)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(replayedEntry)
+
+		if reqBody.Capture && s.Capturer != nil {
+			err = s.Capturer.Push(reqBody.Subdomain, replayedEntry)
+			if err != nil {
+				http.Error(w, "failed to save replayed request", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		if s.Hub != nil {
+			_ = s.Hub.BroadcastJSON(map[string]any{
+				"type":      "request",
+				"subdomain": reqBody.Subdomain,
+				"entry":     replayedEntry,
+			})
+		}
+
+		fmt.Printf("[UI] Replayed request %s for subdomain %s\n", reqBody.RequestID, reqBody.Subdomain)
 	})
 
 	return mux

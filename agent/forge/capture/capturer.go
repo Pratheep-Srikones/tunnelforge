@@ -27,4 +27,5 @@ type RequestEntry struct {
 	DurationMS      int64       `json:"duration_ms"`
 	Truncated       bool        `json:"truncated"`
 	Err             string      `json:"err,omitempty"`
+	Replayed        bool        `json:"replayed,omitempty"`
 }

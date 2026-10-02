@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"time"
@@ -151,9 +150,10 @@ func (c *Client) forwardWithCapture(
 				urlStr = req.RequestURI
 			}
 		}
+		fmt.Println("[Debug] stored url in string entry: ", urlStr)
 
 		entry := &capture.RequestEntry{
-			ID:              fmt.Sprintf("%d-%06d", time.Now().UnixMilli(), rand.Intn(1000000)),
+			ID:              util.UUID(),
 			Subdomain:       subdomain,
 			Timestamp:       startTime,
 			Method:          req.Method,
