@@ -961,8 +961,8 @@ This is a slow side project. Each milestone should be independently shippable.
 - [x] HTTP interceptor (capture req/res without blocking proxy path)
 - [x] Local web UI: live request list, request detail view
 - [x] WebSocket push from agent to UI
-- [ ] Request replay from UI
-- [ ] `forge logs` CLI command
+- [x] Request replay from UI
+- [x] `forge logs` CLI command
 
 ### Milestone 5 — Polish & V1 Release (1 weekend)
 
