@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,12 +10,13 @@ import (
 	"time"
 	"tunnelforge/agent/forge/capture"
 	tunnel "tunnelforge/agent/forge/config"
+	"tunnelforge/agent/forge/replay"
 
 	"github.com/gorilla/websocket"
 )
 
 func TestServer_Health(t *testing.T) {
-	srv := NewServer("0", nil, nil)
+	srv := NewServer("0", nil, nil, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -35,7 +37,7 @@ func TestServer_TunnelsAPI(t *testing.T) {
 		"my-app":   {Local: "localhost:5173", Capture: false},
 	}
 
-	srv := NewServer("0", nil, tunnels)
+	srv := NewServer("0", nil, tunnels, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -79,7 +81,7 @@ func TestServer_RequestsAPI(t *testing.T) {
 
 	srv := NewServer("0", rb, map[string]tunnel.TunnelEntry{
 		"api": {Local: "localhost:3000", Capture: true},
-	})
+	}, nil)
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -123,7 +125,7 @@ func TestServer_RequestsAPI(t *testing.T) {
 }
 
 func TestServer_WebSocketBroadcast(t *testing.T) {
-	srv := NewServer("0", nil, nil)
+	srv := NewServer("0", nil, nil, nil)
 	go srv.Hub.Run()
 	defer srv.Hub.Stop()
 
@@ -171,3 +173,94 @@ func TestServer_WebSocketBroadcast(t *testing.T) {
 		t.Fatalf("unexpected event received: %+v", received)
 	}
 }
+
+func TestServer_ReplayAPI(t *testing.T) {
+	localBackend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"message":"pong"}`))
+	}))
+	defer localBackend.Close()
+
+	localAddr := strings.TrimPrefix(localBackend.URL, "http://")
+
+	rb := capture.NewRingBuffer(10)
+	origEntry := &capture.RequestEntry{
+		ID:              "req-to-replay",
+		Subdomain:       "api",
+		Method:          http.MethodGet,
+		URL:             "/ping",
+		ResponseStatus:  http.StatusOK,
+		ResponseHeaders: http.Header{},
+		ResponseBody:    []byte(`{"message":"orig"}`),
+		Timestamp:       time.Now(),
+	}
+	_ = rb.Push("api", origEntry)
+
+	replayer := replay.NewReplayer(&http.Client{Timeout: 2 * time.Second})
+	srv := NewServer("0", rb, map[string]tunnel.TunnelEntry{
+		"api": {Local: localAddr, Capture: true},
+	}, replayer)
+
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	// 1. Success replay with capture=true
+	bodyBytes, _ := json.Marshal(replay.ReplayRequest{
+		Subdomain: "api",
+		RequestID: "req-to-replay",
+		Capture:   true,
+	})
+	resp, err := http.Post(ts.URL+"/api/requests/replay", "application/json", bytes.NewReader(bodyBytes))
+	if err != nil {
+		t.Fatalf("replay request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", resp.StatusCode)
+	}
+
+	var replayed capture.RequestEntry
+	if err := json.NewDecoder(resp.Body).Decode(&replayed); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if !replayed.Replayed {
+		t.Errorf("expected Replayed to be true")
+	}
+	if string(replayed.ResponseBody) != `{"message":"pong"}` {
+		t.Errorf("expected pong response, got %s", string(replayed.ResponseBody))
+	}
+
+	// Verify it was pushed to the ring buffer (now len should be 2)
+	list, _ := rb.List("api", 10)
+	if len(list) != 2 {
+		t.Errorf("expected 2 entries in ring buffer after replay capture, got %d", len(list))
+	}
+
+	// 2. Request not found (404)
+	badBody, _ := json.Marshal(replay.ReplayRequest{
+		Subdomain: "api",
+		RequestID: "non-existent-id",
+		Capture:   false,
+	})
+	badResp, err := http.Post(ts.URL+"/api/requests/replay", "application/json", bytes.NewReader(badBody))
+	if err != nil {
+		t.Fatalf("replay request failed: %v", err)
+	}
+	badResp.Body.Close()
+	if badResp.StatusCode != http.StatusNotFound {
+		t.Errorf("expected 404 Not Found, got %d", badResp.StatusCode)
+	}
+
+	// 3. Method not allowed (405)
+	getResp, err := http.Get(ts.URL + "/api/requests/replay")
+	if err != nil {
+		t.Fatalf("get request failed: %v", err)
+	}
+	getResp.Body.Close()
+	if getResp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405 Method Not Allowed, got %d", getResp.StatusCode)
+	}
+}
+

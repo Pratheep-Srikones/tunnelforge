@@ -14,6 +14,7 @@ import (
 	"tunnelforge/agent/forge/capture"
 	"tunnelforge/agent/forge/client"
 	"tunnelforge/agent/forge/config"
+	"tunnelforge/agent/forge/replay"
 	"tunnelforge/agent/forge/ui"
 
 	"github.com/spf13/cobra"
@@ -76,7 +77,7 @@ Examples:
 			}
 		}
 
-		uiServer := ui.NewServer("4040", ringBuffer, tunnels)
+		uiServer := ui.NewServer("4040", ringBuffer, tunnels, replay.NewReplayer(client.GetHTTPClient(true, 10*time.Second)))
 		go func() {
 			if err := uiServer.Start(); err != nil && err != http.ErrServerClosed {
 				fmt.Printf("[UI] Server error: %v\n", err)

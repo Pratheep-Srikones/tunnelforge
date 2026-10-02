@@ -957,10 +957,10 @@ This is a slow side project. Each milestone should be independently shippable.
 
 ### Milestone 4 — Request Capture & UI (2–3 weekends)
 
-- [ ] Ring buffer implementation
-- [ ] HTTP interceptor (capture req/res without blocking proxy path)
-- [ ] Local web UI: live request list, request detail view
-- [ ] WebSocket push from agent to UI
+- [x] Ring buffer implementation
+- [x] HTTP interceptor (capture req/res without blocking proxy path)
+- [x] Local web UI: live request list, request detail view
+- [x] WebSocket push from agent to UI
 - [ ] Request replay from UI
 - [ ] `forge logs` CLI command
 
