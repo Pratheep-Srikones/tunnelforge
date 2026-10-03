@@ -2,6 +2,8 @@ package routes
 
 import (
 	"net/http"
+	"os"
+	"sync"
 	"tunnelforge/internal/proto"
 	"tunnelforge/server/auth"
 	"tunnelforge/server/utils"
@@ -9,8 +11,53 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// TODO: Identify mechanism to manage enrollment keys
-const SecretEnrollmentKey = "tf_enroll_xyz123"
+const DefaultEnrollmentKey = "tf_enroll_xyz123"
+
+var (
+	keyMu               sync.RWMutex
+	customEnrollmentKey string
+	isUsingDefaultKey   bool = true
+)
+
+// InitEnrollmentKey configures the enrollment key in priority order:
+// 1. Explicit CLI flag argument (if non-empty)
+// 2. FORGE_ENROLLMENT_KEY environment variable (if non-empty)
+// 3. Default key ("tf_enroll_xyz123")
+func InitEnrollmentKey(flagVal string) string {
+	keyMu.Lock()
+	defer keyMu.Unlock()
+
+	if flagVal != "" {
+		customEnrollmentKey = flagVal
+		isUsingDefaultKey = false
+		return customEnrollmentKey
+	}
+
+	if envVal := os.Getenv("FORGE_ENROLLMENT_KEY"); envVal != "" {
+		customEnrollmentKey = envVal
+		isUsingDefaultKey = false
+		return customEnrollmentKey
+	}
+
+	customEnrollmentKey = DefaultEnrollmentKey
+	isUsingDefaultKey = true
+	return customEnrollmentKey
+}
+
+func GetEnrollmentKey() string {
+	keyMu.RLock()
+	defer keyMu.RUnlock()
+	if customEnrollmentKey != "" {
+		return customEnrollmentKey
+	}
+	return DefaultEnrollmentKey
+}
+
+func IsUsingDefaultEnrollmentKey() bool {
+	keyMu.RLock()
+	defer keyMu.RUnlock()
+	return isUsingDefaultKey
+}
 
 func UseAuthRoutes(rg *gin.RouterGroup) {
 	auth := rg.Group("/auth")
@@ -26,7 +73,7 @@ func register(c *gin.Context) {
 		return
 	}
 
-	if req.EnrollmentKey != SecretEnrollmentKey {
+	if req.EnrollmentKey != GetEnrollmentKey() {
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid enrollment key"})
 		return
 	}
@@ -45,3 +92,4 @@ func register(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
+

@@ -151,11 +151,24 @@ Your services are now publicly live at:
 
 | Command | Description | Example |
 | :--- | :--- | :--- |
-| `forge register` | Authenticate agent and save enrollment credentials | `forge register --server tunnels.yourdomain.com` |
+| `forge register` | Authenticate agent and save enrollment credentials | `forge register --server tunnels.yourdomain.com -e my_secret_key` |
 | `forge up` | Launch reverse tunnels defined in config | `forge up -c tunnels.yaml` |
 | `forge status` | Display active tunnel routing and health status | `forge status` |
 | `forge logs` | Tail captured HTTP request logs | `forge logs -f -n 20` |
 | `forge cert` | Display or export embedded Root CA certificate | `forge cert -o ca.crt` |
+
+### Registration & Enrollment Keys
+
+When registering your agent, the enrollment key is resolved using the following priority order:
+
+1. `-e, --enrollment-key` CLI flag
+2. `FORGE_ENROLLMENT_KEY` environment variable
+3. Default key (`tf_enroll_xyz123`)
+
+On the server, you can set custom enrollment keys via:
+
+* `tunnelforge-server --enrollment-key <your-key>`
+* `FORGE_ENROLLMENT_KEY=<your-key>` environment variable
 
 ### Command Flags for `forge up`
 

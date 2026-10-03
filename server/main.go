@@ -29,7 +29,13 @@ var upgrader = websocket.Upgrader{
 func main() {
 	certFile := flag.String("tls-cert", "", "Path to TLS certificate file")
 	keyFile := flag.String("tls-key", "", "Path to TLS private key file")
+	enrollmentKeyFlag := flag.String("enrollment-key", "", "Enrollment key for agent registration (or set FORGE_ENROLLMENT_KEY env var)")
 	flag.Parse()
+
+	routes.InitEnrollmentKey(*enrollmentKeyFlag)
+	if routes.IsUsingDefaultEnrollmentKey() {
+		fmt.Println("[Server] [WARNING] Using default enrollment key 'tf_enroll_xyz123'. Set FORGE_ENROLLMENT_KEY env var or --enrollment-key flag for security.")
+	}
 
 	tlsConfig, err := certs.LoadServerTLSConfig(*certFile, *keyFile)
 	if err != nil {

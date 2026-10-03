@@ -89,13 +89,25 @@ Install the systemd unit file from [`deploy/server.service`](deploy/server.servi
 # 1. Copy service file
 sudo cp deploy/server.service /etc/systemd/system/tunnelforge.service
 
-# 2. Reload systemd
+# 2. Set custom enrollment key in service file (Recommended for production)
+sudo systemctl edit tunnelforge --drop-in=env.conf
+```
+
+Add the following override content:
+
+```ini
+[Service]
+Environment="FORGE_ENROLLMENT_KEY=your_secure_custom_key_123"
+```
+
+```bash
+# 3. Reload systemd
 sudo systemctl daemon-reload
 
-# 3. Enable and start TunnelForge
+# 4. Enable and start TunnelForge
 sudo systemctl enable --now tunnelforge
 
-# 4. Check service status
+# 5. Check service status
 sudo systemctl status tunnelforge
 ```
 

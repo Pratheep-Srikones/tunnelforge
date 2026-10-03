@@ -6,6 +6,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 	"tunnelforge/agent/forge/client"
 	"tunnelforge/agent/forge/config"
@@ -26,6 +27,11 @@ var registerCmd = &cobra.Command{
 	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		key, _ := cmd.Flags().GetString("enrollment-key")
+		if !cmd.Flags().Changed("enrollment-key") {
+			if envKey := os.Getenv("FORGE_ENROLLMENT_KEY"); envKey != "" {
+				key = envKey
+			}
+		}
 		serverAddr, _ := cmd.Flags().GetString("server")
 
 		rc := client.NewRESTClient(client.GetHTTPClient(true, 10*time.Second), serverAddr)

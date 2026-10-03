@@ -11,6 +11,7 @@ WorkingDirectory=/etc/tunnelforge
 ExecStart=/usr/local/bin/tunnelforge-server
 Restart=always
 RestartSec=5
+Environment="FORGE_ENROLLMENT_KEY=your_secure_enrollment_key_here"
 LimitNOFILE=65535
 StandardOutput=journal
 StandardError=journal
