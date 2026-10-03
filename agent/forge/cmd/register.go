@@ -17,13 +17,13 @@ import (
 // registerCmd represents the register command
 var registerCmd = &cobra.Command{
 	Use:   "register",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Register the tunnelforge agent and get agent id and token",
+	Long: `Register the tunnelforge agent with the tunnelforge agent get the 
+	authentication token and agent id and save them in the config file`,
+	Example: `
+	   forge register --server <SERVER_URL_OR_IP_ADDRESS> --enrollment-key <ENROLLMENT_KEY>
+	   forge register --server https://tunnel.yourdomain.com --enrollment-key tf_enroll_xyz123
+	`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		key, _ := cmd.Flags().GetString("enrollment-key")
 		serverAddr, _ := cmd.Flags().GetString("server")
