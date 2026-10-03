@@ -91,6 +91,9 @@ Examples:
 			_ = uiServer.Stop(shutdownCtx)
 		}()
 
+		caCert, _ := cmd.Flags().GetString("ca-cert")
+		insecure, _ := cmd.Flags().GetBool("insecure")
+
 		c := client.New(
 			serverAddr,
 			token,
@@ -98,7 +101,9 @@ Examples:
 			maxRetryCount,
 			tunnels,
 			ringBuffer,
-		).WithBroadcaster(uiServer.Hub)
+		).WithBroadcaster(uiServer.Hub).
+			WithCACert(caCert).
+			WithInsecureSkipTLS(insecure)
 
 		return c.Run(ctx)
 	},
@@ -153,6 +158,8 @@ func init() {
 	upCmd.Flags().IntP("max-retries", "r", 10, "Maximum number of reconnect retries")
 	upCmd.Flags().String("token", "", "Agent auth token (defaults to saved config)")
 	upCmd.Flags().String("agent-id", "", "Agent ID (defaults to saved config)")
+	upCmd.Flags().String("ca-cert", "", "Path to custom CA certificate file (defaults to embedded CA)")
+	upCmd.Flags().Bool("insecure", false, "Disable TLS encryption for agent-server communication")
 
 	if err := upCmd.MarkFlagRequired("config"); err != nil {
 		panic(err)

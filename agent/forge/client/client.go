@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -9,6 +10,7 @@ import (
 	"time"
 	"tunnelforge/agent/forge/capture"
 	tunnel "tunnelforge/agent/forge/config"
+	"tunnelforge/internal/certs"
 	"tunnelforge/internal/config"
 	"tunnelforge/internal/proto"
 
@@ -36,6 +38,11 @@ type Client struct {
 	Tunnels     map[string]tunnel.TunnelEntry
 	Capturer    capture.Capturer
 	Broadcaster Broadcaster
+
+	// TLS configuration
+	CACertPath      string
+	TLSConfig       *tls.Config
+	InsecureSkipTLS bool
 }
 
 // Broadcaster is an interface for sending live event notifications to connected dashboards.
@@ -57,6 +64,25 @@ func New(serverAddr, token, agentID string, maxRetryCount int, tunnels map[strin
 // WithBroadcaster attaches a live event broadcaster (e.g. WebSocket Hub) to the client.
 func (c *Client) WithBroadcaster(b Broadcaster) *Client {
 	c.Broadcaster = b
+	return c
+}
+
+// WithCACert sets a custom CA certificate file path to verify the server.
+// If left empty, the embedded root CA certificate is used.
+func (c *Client) WithCACert(caPath string) *Client {
+	c.CACertPath = caPath
+	return c
+}
+
+// WithTLSConfig sets an explicit *tls.Config for the agent client.
+func (c *Client) WithTLSConfig(cfg *tls.Config) *Client {
+	c.TLSConfig = cfg
+	return c
+}
+
+// WithInsecureSkipTLS disables TLS encryption (using plain TCP). Used mainly for tests.
+func (c *Client) WithInsecureSkipTLS(skip bool) *Client {
+	c.InsecureSkipTLS = skip
 	return c
 }
 
@@ -180,7 +206,7 @@ func NormalizeTCPAddr(rawAddr string) string {
 
 func (c *Client) connect(ctx context.Context) (net.Conn, error) {
 	/*
-		connect to server by using direct tcp connection
+		connect to server using TLS connection (or plain TCP if InsecureSkipTLS is set)
 	*/
 	targetAddr := NormalizeTCPAddr(c.ServerAddr)
 	fmt.Println("[Connect] Connecting to:", targetAddr)
@@ -189,20 +215,39 @@ func (c *Client) connect(ctx context.Context) (net.Conn, error) {
 		Timeout: DialTimeout,
 	}
 
-	conn, err := dialer.DialContext(ctx,
-		"tcp",
-		targetAddr,
-	)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"connect to %s: %w",
-			targetAddr,
-			err,
-		)
+	if c.InsecureSkipTLS {
+		conn, err := dialer.DialContext(ctx, "tcp", targetAddr)
+		if err != nil {
+			return nil, fmt.Errorf("connect to %s: %w", targetAddr, err)
+		}
+		fmt.Println("[Connect] Connected to server (plain TCP)")
+		return conn, nil
 	}
 
-	fmt.Println("[Connect] Connected to server")
+	var tlsCfg *tls.Config
+	if c.TLSConfig != nil {
+		tlsCfg = c.TLSConfig.Clone()
+		if tlsCfg.ServerName == "" {
+			host, _, err := net.SplitHostPort(targetAddr)
+			if err != nil {
+				host = targetAddr
+			}
+			tlsCfg.ServerName = host
+		}
+	} else {
+		var err error
+		tlsCfg, err = certs.LoadClientTLSConfig(targetAddr, c.CACertPath)
+		if err != nil {
+			return nil, fmt.Errorf("loading TLS configuration: %w", err)
+		}
+	}
 
+	conn, err := tls.DialWithDialer(&dialer, "tcp", targetAddr, tlsCfg)
+	if err != nil {
+		return nil, fmt.Errorf("connect to %s with TLS: %w", targetAddr, err)
+	}
+
+	fmt.Println("[Connect] Connected to server with TLS")
 	return conn, nil
 }
 

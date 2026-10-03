@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"testing"
 	"time"
 	"tunnelforge/agent/forge/client"
+	"tunnelforge/internal/certs"
 	"tunnelforge/server/auth"
 	"tunnelforge/server/tunnel"
 )
@@ -32,6 +34,18 @@ func waitForRemoval(subdomain string, timeout time.Duration) bool {
 	return false
 }
 
+func startTestAgentListener(t *testing.T) net.Listener {
+	tlsConfig, err := certs.LoadServerTLSConfig("", "")
+	if err != nil {
+		t.Fatalf("failed to load TLS config for test listener: %v", err)
+	}
+	listener, err := tls.Listen("tcp", "127.0.0.1:0", tlsConfig)
+	if err != nil {
+		t.Fatalf("failed to start TLS listener: %v", err)
+	}
+	return listener
+}
+
 func TestAgentMultiSubdomainRegistration(t *testing.T) {
 	authReg := auth.GetAuthRegistry()
 	agentID := "agent_multi_1"
@@ -41,10 +55,7 @@ func TestAgentMultiSubdomainRegistration(t *testing.T) {
 		t.Fatalf("failed to register agent: %v", err)
 	}
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start listener: %v", err)
-	}
+	listener := startTestAgentListener(t)
 	defer listener.Close()
 
 	go func() {
@@ -123,10 +134,7 @@ func TestDuplicateSubdomainRegistration(t *testing.T) {
 		t.Fatalf("failed to register agent 2: %v", err)
 	}
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start listener: %v", err)
-	}
+	listener := startTestAgentListener(t)
 	defer listener.Close()
 
 	go func() {
@@ -172,7 +180,7 @@ func TestDuplicateSubdomainRegistration(t *testing.T) {
 		map[string]string{subdomain: "localhost:3000"},
 	)
 
-	_, err = c2.RunOnce(ctx2)
+	_, err := c2.RunOnce(ctx2)
 	if err == nil {
 		t.Fatalf("expected second client registration to fail due to duplicate subdomain")
 	}
@@ -191,10 +199,7 @@ func TestAtomicRollbackOnPartialFailure(t *testing.T) {
 		t.Fatalf("failed to register agent 2: %v", err)
 	}
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start listener: %v", err)
-	}
+	listener := startTestAgentListener(t)
 	defer listener.Close()
 
 	go func() {
@@ -245,7 +250,7 @@ func TestAtomicRollbackOnPartialFailure(t *testing.T) {
 		},
 	)
 
-	_, err = c2.RunOnce(ctx2)
+	_, err := c2.RunOnce(ctx2)
 	if err == nil {
 		t.Fatal("expected registration to fail due to 'claimed' being taken")
 	}
@@ -274,10 +279,7 @@ func TestSameAgentReconnectSessionTakeover(t *testing.T) {
 		t.Fatalf("failed to register agent: %v", err)
 	}
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start listener: %v", err)
-	}
+	listener := startTestAgentListener(t)
 	defer listener.Close()
 
 	go func() {

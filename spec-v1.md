@@ -950,7 +950,7 @@ This is a slow side project. Each milestone should be independently shippable.
 
 - [x] `forge up`, `forge up <name>`, `forge status` commands
 - [ ] ~~`forge token generate`~~
-- [ ] Structured JSON logging on server
+- [x] Structured JSON logging on server
 - [x] Human-readable logging on agent
 - [x] `/health` endpoint on both binaries
 - [x] Admin API (list sessions, disconnect)

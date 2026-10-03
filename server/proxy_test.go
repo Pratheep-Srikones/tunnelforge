@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -50,10 +49,7 @@ func TestProxy_EndToEnd_GET(t *testing.T) {
 		t.Fatalf("failed to register agent auth: %v", err)
 	}
 
-	agentListener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start agent listener: %v", err)
-	}
+	agentListener := startTestAgentListener(t)
 	defer agentListener.Close()
 
 	go func() {
@@ -213,10 +209,7 @@ func TestProxy_EndToEnd_POST(t *testing.T) {
 		t.Fatalf("failed to register agent auth: %v", err)
 	}
 
-	agentListener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start agent listener: %v", err)
-	}
+	agentListener := startTestAgentListener(t)
 	defer agentListener.Close()
 
 	go func() {
@@ -372,10 +365,7 @@ func TestProxy_EndToEnd_MultiTunnel(t *testing.T) {
 		t.Fatalf("failed to register agent auth: %v", err)
 	}
 
-	agentListener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start agent listener: %v", err)
-	}
+	agentListener := startTestAgentListener(t)
 	defer agentListener.Close()
 
 	go func() {
@@ -486,10 +476,7 @@ func TestProxy_ForwardingHeaders(t *testing.T) {
 	token := "token_proxy_headers_123"
 	_ = authReg.Register(agentID, token)
 
-	agentListener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start listener: %v", err)
-	}
+	agentListener := startTestAgentListener(t)
 	defer agentListener.Close()
 
 	go func() {
@@ -565,10 +552,7 @@ func TestProxy_LocalBackendDown(t *testing.T) {
 	token := "token_proxy_down_123"
 	_ = authReg.Register(agentID, token)
 
-	agentListener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to start listener: %v", err)
-	}
+	agentListener := startTestAgentListener(t)
 	defer agentListener.Close()
 
 	go func() {

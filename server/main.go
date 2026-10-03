@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/tls"
+	"flag"
 	"fmt"
-	"net"
+	"tunnelforge/internal/certs"
 	"tunnelforge/server/routes"
 	"tunnelforge/server/tunnel"
 
@@ -14,15 +16,24 @@ const PORT = "7000"
 var registry = tunnel.NewAgentRegistry()
 
 func main() {
-	listner, err := net.Listen("tcp", ":"+PORT)
+	certFile := flag.String("tls-cert", "", "Path to TLS certificate file")
+	keyFile := flag.String("tls-key", "", "Path to TLS private key file")
+	flag.Parse()
+
+	tlsConfig, err := certs.LoadServerTLSConfig(*certFile, *keyFile)
 	if err != nil {
-		panic("[Server] Error listening on port: " + err.Error())
+		panic("[Server] TLS initialization failed: " + err.Error())
 	}
-	defer listner.Close()
+
+	listener, err := tls.Listen("tcp", ":"+PORT, tlsConfig)
+	if err != nil {
+		panic("[Server] Error listening with TLS on port " + PORT + ": " + err.Error())
+	}
+	defer listener.Close()
 
 	go func() {
 		for {
-			conn, err := listner.Accept()
+			conn, err := listener.Accept()
 			if err != nil {
 				fmt.Println("Error accepting connection: " + err.Error())
 				continue
