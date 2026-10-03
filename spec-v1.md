@@ -939,11 +939,11 @@ This is a slow side project. Each milestone should be independently shippable.
 
 - [x] Multi-tunnel support (multiple subdomains per agent session)
 - [x] TCP tunnel type
-- [ ] WebSocket transport fallback
+- [x] WebSocket transport fallback
 - [x] Reconnect with exponential backoff
 - [x] `tunnels.yaml` config file loading
 - [ ] Wildcard TLS via autocert
-- [ ] systemd service + deploy scripts
+- [x] systemd service + deploy scripts
 - [x] Server deploys and runs stably on Oracle VPS
 
 ### Milestone 3 — CLI & Observability (1–2 weekends)

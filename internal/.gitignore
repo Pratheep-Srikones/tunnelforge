@@ -1,2 +1,2 @@
 *.key
-server.crt
+*.crt

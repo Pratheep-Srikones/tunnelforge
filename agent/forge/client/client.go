@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"strings"
 	"time"
 	"tunnelforge/agent/forge/capture"
@@ -13,7 +14,9 @@ import (
 	"tunnelforge/internal/certs"
 	"tunnelforge/internal/config"
 	"tunnelforge/internal/proto"
+	"tunnelforge/internal/transport"
 
+	"github.com/gorilla/websocket"
 	"github.com/hashicorp/yamux"
 )
 
@@ -43,6 +46,10 @@ type Client struct {
 	CACertPath      string
 	TLSConfig       *tls.Config
 	InsecureSkipTLS bool
+
+	// Transport configuration & state
+	ForceWS            bool
+	preferredTransport string
 }
 
 // Broadcaster is an interface for sending live event notifications to connected dashboards.
@@ -83,6 +90,12 @@ func (c *Client) WithTLSConfig(cfg *tls.Config) *Client {
 // WithInsecureSkipTLS disables TLS encryption (using plain TCP). Used mainly for tests.
 func (c *Client) WithInsecureSkipTLS(skip bool) *Client {
 	c.InsecureSkipTLS = skip
+	return c
+}
+
+// WithWebSocket forces using the WebSocket transport (/tunnel) bypassing port 7000.
+func (c *Client) WithWebSocket(force bool) *Client {
+	c.ForceWS = force
 	return c
 }
 
@@ -185,70 +198,150 @@ func (c *Client) RunOnce(ctx context.Context) (bool, error) {
 }
 
 func NormalizeTCPAddr(rawAddr string) string {
-	addr := strings.TrimSpace(rawAddr)
-	if idx := strings.Index(addr, "://"); idx != -1 {
-		addr = addr[idx+3:]
-	}
-	if idx := strings.Index(addr, "/"); idx != -1 {
-		addr = addr[:idx]
-	}
-
-	host, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		host = addr
-		port = "7000"
-	} else if port == "8000" {
-		port = "7000"
-	}
-
-	return net.JoinHostPort(host, port)
+	return ResolveServerEndpoints(rawAddr).TCPAddr
 }
 
 func (c *Client) connect(ctx context.Context) (net.Conn, error) {
 	/*
-		connect to server using TLS connection (or plain TCP if InsecureSkipTLS is set)
+		connect to server using TLS connection (or plain TCP if InsecureSkipTLS is set),
+		with automatic WebSocket fallback when port 7000 is blocked by a firewall.
 	*/
-	targetAddr := NormalizeTCPAddr(c.ServerAddr)
-	fmt.Println("[Connect] Connecting to:", targetAddr)
+	endpoints := ResolveServerEndpoints(c.ServerAddr)
+
+	var tlsCfg *tls.Config
+	if !c.InsecureSkipTLS {
+		if c.TLSConfig != nil {
+			tlsCfg = c.TLSConfig.Clone()
+			if tlsCfg.ServerName == "" {
+				host, _, err := net.SplitHostPort(endpoints.TCPAddr)
+				if err != nil {
+					host = endpoints.TCPAddr
+				}
+				tlsCfg.ServerName = host
+			}
+		} else {
+			var err error
+			tlsCfg, err = certs.LoadClientTLSConfig(endpoints.TCPAddr, c.CACertPath)
+			if err != nil {
+				return nil, fmt.Errorf("loading TLS configuration: %w", err)
+			}
+		}
+	}
+
+	// 1. If WebSocket transport is forced or already selected for this session:
+	if c.ForceWS || c.preferredTransport == "ws" {
+		return c.connectWS(ctx, endpoints, tlsCfg)
+	}
+
+	// 2. Attempt primary connection on port :7000 (TLS or plain TCP)
+	fmt.Println("[Connect] Connecting to:", endpoints.TCPAddr)
+	var conn net.Conn
+	var err error
 
 	dialer := net.Dialer{
-		Timeout: DialTimeout,
+		Timeout: 3 * time.Second,
 	}
 
 	if c.InsecureSkipTLS {
-		conn, err := dialer.DialContext(ctx, "tcp", targetAddr)
-		if err != nil {
-			return nil, fmt.Errorf("connect to %s: %w", targetAddr, err)
+		conn, err = dialer.DialContext(ctx, "tcp", endpoints.TCPAddr)
+	} else {
+		conn, err = tls.DialWithDialer(&dialer, "tcp", endpoints.TCPAddr, tlsCfg)
+	}
+
+	if err == nil {
+		if c.InsecureSkipTLS {
+			c.preferredTransport = "tcp"
+			fmt.Println("[Connect] Connected to server (plain TCP)")
+		} else {
+			c.preferredTransport = "tls"
+			fmt.Println("[Connect] Connected to server with TLS")
 		}
-		fmt.Println("[Connect] Connected to server (plain TCP)")
 		return conn, nil
 	}
 
-	var tlsCfg *tls.Config
-	if c.TLSConfig != nil {
-		tlsCfg = c.TLSConfig.Clone()
-		if tlsCfg.ServerName == "" {
-			host, _, err := net.SplitHostPort(targetAddr)
+	// 3. Primary connection on :7000 failed
+	fmt.Printf("[Connect] Primary connection to %s failed (%v)\n", endpoints.TCPAddr, err)
+	fmt.Printf("[Connect] Probing server health at %s...\n", endpoints.RESTURL)
+
+	// 4. Probe server health on web port (:443 or :8000)
+	healthTLS := tlsCfg
+	if c.InsecureSkipTLS {
+		healthTLS = nil
+	}
+
+	if checkServerHealthEndpoint(ctx, endpoints.RESTURL, endpoints.IsTLS && !c.InsecureSkipTLS, healthTLS) {
+		fmt.Println("[Connect] Server is ALIVE on web port! (Port 7000 is blocked by firewall)")
+		fmt.Println("[Connect] Switching to WebSocket fallback transport...")
+		c.preferredTransport = "ws" // Latch onto WebSocket for remainder of session
+		return c.connectWS(ctx, endpoints, tlsCfg)
+	}
+
+	// Both failed -> server is truly down or client has no internet connection
+	return nil, fmt.Errorf("server unreachable (primary on %s: %w)", endpoints.TCPAddr, err)
+}
+
+func (c *Client) connectWS(ctx context.Context, endpoints ServerEndpoints, tlsCfg *tls.Config) (net.Conn, error) {
+	fmt.Printf("[Connect] Connecting via WebSocket: %s\n", endpoints.WSURL)
+
+	wsDialer := websocket.Dialer{
+		HandshakeTimeout: DialTimeout,
+	}
+
+	if endpoints.IsTLS && !c.InsecureSkipTLS {
+		if tlsCfg != nil {
+			wsDialer.TLSClientConfig = tlsCfg.Clone()
+		} else {
+			cfg, err := certs.LoadClientTLSConfig(endpoints.TCPAddr, c.CACertPath)
 			if err != nil {
-				host = targetAddr
+				return nil, fmt.Errorf("loading TLS configuration for WebSocket: %w", err)
 			}
-			tlsCfg.ServerName = host
+			wsDialer.TLSClientConfig = cfg
+		}
+	}
+
+	ws, resp, err := wsDialer.DialContext(ctx, endpoints.WSURL, nil)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+	if err != nil {
+		return nil, fmt.Errorf("websocket dial to %s: %w", endpoints.WSURL, err)
+	}
+
+	fmt.Println("[Connect] Connected to server via WebSocket")
+	return transport.NewWSConn(ws), nil
+}
+
+func checkServerHealthEndpoint(ctx context.Context, restURL string, isTLS bool, tlsCfg *tls.Config) bool {
+	probeCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	var tr *http.Transport
+	if isTLS && tlsCfg != nil {
+		tr = &http.Transport{
+			TLSClientConfig: tlsCfg.Clone(),
 		}
 	} else {
-		var err error
-		tlsCfg, err = certs.LoadClientTLSConfig(targetAddr, c.CACertPath)
-		if err != nil {
-			return nil, fmt.Errorf("loading TLS configuration: %w", err)
-		}
+		tr = &http.Transport{}
 	}
 
-	conn, err := tls.DialWithDialer(&dialer, "tcp", targetAddr, tlsCfg)
+	httpClient := &http.Client{
+		Timeout:   3 * time.Second,
+		Transport: tr,
+	}
+
+	healthURL := strings.TrimRight(restURL, "/") + "/forge/internal/health"
+	req, err := http.NewRequestWithContext(probeCtx, http.MethodGet, healthURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("connect to %s with TLS: %w", targetAddr, err)
+		return false
 	}
 
-	fmt.Println("[Connect] Connected to server with TLS")
-	return conn, nil
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK
 }
 
 func (c *Client) handshake(ctx context.Context, conn net.Conn) error {
