@@ -48,8 +48,8 @@ func NewRESTClient(hc *http.Client, serverURL string) *RESTClient {
 	if hc == nil {
 		hc = GetHTTPClient(false, 10*time.Second)
 	}
-	if serverURL != "" && !strings.HasPrefix(serverURL, "http://") && !strings.HasPrefix(serverURL, "https://") {
-		serverURL = "http://" + serverURL
+	if serverURL != "" {
+		serverURL = ResolveServerEndpoints(serverURL).RESTURL
 	}
 	return &RESTClient{
 		ServerURL:  serverURL,

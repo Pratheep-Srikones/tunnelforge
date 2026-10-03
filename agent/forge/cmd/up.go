@@ -93,6 +93,7 @@ Examples:
 
 		caCert, _ := cmd.Flags().GetString("ca-cert")
 		insecure, _ := cmd.Flags().GetBool("insecure")
+		forceWS, _ := cmd.Flags().GetBool("ws")
 
 		c := client.New(
 			serverAddr,
@@ -103,7 +104,8 @@ Examples:
 			ringBuffer,
 		).WithBroadcaster(uiServer.Hub).
 			WithCACert(caCert).
-			WithInsecureSkipTLS(insecure)
+			WithInsecureSkipTLS(insecure).
+			WithWebSocket(forceWS)
 
 		return c.Run(ctx)
 	},
@@ -160,6 +162,7 @@ func init() {
 	upCmd.Flags().String("agent-id", "", "Agent ID (defaults to saved config)")
 	upCmd.Flags().String("ca-cert", "", "Path to custom CA certificate file (defaults to embedded CA)")
 	upCmd.Flags().Bool("insecure", false, "Disable TLS encryption for agent-server communication")
+	upCmd.Flags().Bool("ws", false, "Force WebSocket transport fallback (bypasses port 7000)")
 
 	if err := upCmd.MarkFlagRequired("config"); err != nil {
 		panic(err)
