@@ -1,0 +1,48 @@
+
+Summary:
+  Total:	24.9386 secs
+  Slowest:	9.9236 secs
+  Fastest:	0.0702 secs
+  Average:	2.7410 secs
+  Requests/sec:	30.6352
+  
+  Total data:	202840 bytes
+  Size/request:	400 bytes
+
+Response time histogram:
+  0.070 [1]	|
+  1.056 [155]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  2.041 [92]	|■■■■■■■■■■■■■■■■■■■■■■■■
+  3.026 [39]	|■■■■■■■■■■
+  4.012 [66]	|■■■■■■■■■■■■■■■■■
+  4.997 [39]	|■■■■■■■■■■
+  5.982 [50]	|■■■■■■■■■■■■■
+  6.968 [10]	|■■■
+  7.953 [38]	|■■■■■■■■■■
+  8.938 [14]	|■■■■
+  9.924 [2]	|■
+
+
+Latency distribution:
+  10%% in 0.0948 secs
+  25%% in 0.4413 secs
+  50%% in 2.1144 secs
+  75%% in 4.3771 secs
+  90%% in 7.2270 secs
+  95%% in 7.4497 secs
+  99%% in 8.5426 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.0877 secs, 0.0000 secs, 3.1946 secs
+  DNS-lookup:	0.0027 secs, 0.0000 secs, 0.0149 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0004 secs
+  resp wait:	2.1906 secs, 0.0701 secs, 7.4675 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0011 secs
+
+Status code distribution:
+  [200]	506 responses
+
+Error distribution:
+  [258]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+--- Full output for c=200 ---

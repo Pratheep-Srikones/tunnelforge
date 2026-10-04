@@ -1,0 +1,467 @@
+=================================================================
+  TunnelForge Load Test — Sun  4 Oct 23:31:33 +0530 2026
+  Target: https://loadtest.tunnels.pratheepsri.me/
+=================================================================
+
+
+Stage | Concurrency | Req/s  | p50 (ms) | p95 (ms) | p99 (ms) | Errors
+------|-------------|--------|----------|----------|----------|-------
+  0     | 1           | 12.8627 | N/A      | N/A      | N/A      | none
+
+Summary:
+  Total:	15.0047 secs
+  Slowest:	0.3122 secs
+  Fastest:	0.0688 secs
+  Average:	0.0777 secs
+  Requests/sec:	12.8627
+  
+  Total data:	77372 bytes
+  Size/request:	400 bytes
+
+Response time histogram:
+  0.069 [1]	|
+  0.093 [186]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  0.118 [2]	|
+  0.142 [0]	|
+  0.166 [0]	|
+  0.191 [0]	|
+  0.215 [3]	|■
+  0.239 [0]	|
+  0.264 [0]	|
+  0.288 [0]	|
+  0.312 [1]	|
+
+
+Latency distribution:
+  10%% in 0.0710 secs
+  25%% in 0.0720 secs
+  50%% in 0.0735 secs
+  75%% in 0.0765 secs
+  90%% in 0.0799 secs
+  95%% in 0.0869 secs
+  99%% in 0.3122 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.0012 secs, 0.0000 secs, 0.2380 secs
+  DNS-lookup:	0.0000 secs, 0.0000 secs, 0.0085 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0001 secs
+  resp wait:	0.0764 secs, 0.0688 secs, 0.2032 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0001 secs
+
+Status code distribution:
+  [200]	193 responses
+
+
+
+--- Full output for c=1 ---
+
+  0     | 5           | 58.0335 | N/A      | N/A      | N/A      | none
+
+Summary:
+  Total:	15.0086 secs
+  Slowest:	0.2887 secs
+  Fastest:	0.0690 secs
+  Average:	0.0861 secs
+  Requests/sec:	58.0335
+  
+  Total data:	349175 bytes
+  Size/request:	400 bytes
+
+Response time histogram:
+  0.069 [1]	|
+  0.091 [765]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  0.113 [31]	|■■
+  0.135 [9]	|
+  0.157 [5]	|
+  0.179 [2]	|
+  0.201 [38]	|■■
+  0.223 [15]	|■
+  0.245 [0]	|
+  0.267 [0]	|
+  0.289 [5]	|
+
+
+Latency distribution:
+  10%% in 0.0715 secs
+  25%% in 0.0730 secs
+  50%% in 0.0752 secs
+  75%% in 0.0794 secs
+  90%% in 0.1002 secs
+  95%% in 0.1929 secs
+  99%% in 0.2096 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.0005 secs, 0.0000 secs, 0.0808 secs
+  DNS-lookup:	0.0000 secs, 0.0000 secs, 0.0048 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0004 secs
+  resp wait:	0.0856 secs, 0.0690 secs, 0.2157 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0005 secs
+
+Status code distribution:
+  [200]	871 responses
+
+
+
+--- Full output for c=5 ---
+
+  0     | 10          | 19.8383 | N/A      | N/A      | N/A      |   [19]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+Summary:
+  Total:	23.8427 secs
+  Slowest:	4.2844 secs
+  Fastest:	0.0687 secs
+  Average:	0.0927 secs
+  Requests/sec:	19.8383
+  
+  Total data:	181989 bytes
+  Size/request:	400 bytes
+
+Response time histogram:
+  0.069 [1]	|
+  0.490 [452]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  0.912 [0]	|
+  1.333 [0]	|
+  1.755 [0]	|
+  2.177 [0]	|
+  2.598 [0]	|
+  3.020 [0]	|
+  3.441 [0]	|
+  3.863 [0]	|
+  4.284 [1]	|
+
+
+Latency distribution:
+  10%% in 0.0708 secs
+  25%% in 0.0720 secs
+  50%% in 0.0746 secs
+  75%% in 0.0815 secs
+  90%% in 0.1108 secs
+  95%% in 0.1495 secs
+  99%% in 0.1775 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.0019 secs, 0.0000 secs, 0.0929 secs
+  DNS-lookup:	0.0002 secs, 0.0000 secs, 0.0087 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0002 secs
+  resp wait:	0.0907 secs, 0.0686 secs, 4.2844 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0044 secs
+
+Status code distribution:
+  [200]	454 responses
+
+Error distribution:
+  [19]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+--- Full output for c=10 ---
+
+  0     | 25          | 12.5645 | N/A      | N/A      | N/A      |   [32]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+Summary:
+  Total:	24.8318 secs
+  Slowest:	7.8660 secs
+  Fastest:	0.0699 secs
+  Average:	0.4758 secs
+  Requests/sec:	12.5645
+  
+  Total data:	112252 bytes
+  Size/request:	400 bytes
+
+Response time histogram:
+  0.070 [1]	|
+  0.850 [253]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  1.629 [1]	|
+  2.409 [9]	|■
+  3.188 [2]	|
+  3.968 [1]	|
+  4.748 [6]	|■
+  5.527 [5]	|■
+  6.307 [0]	|
+  7.086 [0]	|
+  7.866 [2]	|
+
+
+Latency distribution:
+  10%% in 0.0751 secs
+  25%% in 0.0824 secs
+  50%% in 0.1239 secs
+  75%% in 0.1986 secs
+  90%% in 0.8092 secs
+  95%% in 3.2905 secs
+  99%% in 7.5095 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.0552 secs, 0.0000 secs, 4.2097 secs
+  DNS-lookup:	0.0012 secs, 0.0000 secs, 0.0653 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0002 secs
+  resp wait:	0.2622 secs, 0.0699 secs, 7.4287 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0009 secs
+
+Status code distribution:
+  [200]	280 responses
+
+Error distribution:
+  [32]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+--- Full output for c=25 ---
+
+  0     | 50          | 82.9770 | N/A      | N/A      | N/A      |   [9]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+Summary:
+  Total:	23.5728 secs
+  Slowest:	7.4717 secs
+  Fastest:	0.0695 secs
+  Average:	0.4193 secs
+  Requests/sec:	82.9770
+  
+  Total data:	780520 bytes
+  Size/request:	400 bytes
+
+Response time histogram:
+  0.070 [1]	|
+  0.810 [1669]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  1.550 [162]	|■■■■
+  2.290 [52]	|■
+  3.030 [5]	|
+  3.771 [28]	|■
+  4.511 [9]	|
+  5.251 [0]	|
+  5.991 [9]	|
+  6.732 [0]	|
+  7.472 [12]	|
+
+
+Latency distribution:
+  10%% in 0.0751 secs
+  25%% in 0.0878 secs
+  50%% in 0.1366 secs
+  75%% in 0.2125 secs
+  90%% in 1.1384 secs
+  95%% in 2.1623 secs
+  99%% in 5.3213 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.0032 secs, 0.0000 secs, 0.1508 secs
+  DNS-lookup:	0.0001 secs, 0.0000 secs, 0.0046 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0009 secs
+  resp wait:	0.4160 secs, 0.0694 secs, 7.4717 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0006 secs
+
+Status code distribution:
+  [200]	1947 responses
+
+Error distribution:
+  [9]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+--- Full output for c=50 ---
+
+  0     | 75          | 22.9913 | N/A      | N/A      | N/A      |   [91]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+Summary:
+  Total:	24.9660 secs
+  Slowest:	7.8742 secs
+  Fastest:	0.0702 secs
+  Average:	1.3160 secs
+  Requests/sec:	22.9913
+  
+  Total data:	193629 bytes
+  Size/request:	400 bytes
+
+Response time histogram:
+  0.070 [1]	|
+  0.851 [285]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  1.631 [30]	|■■■■
+  2.411 [59]	|■■■■■■■■
+  3.192 [43]	|■■■■■■
+  3.972 [24]	|■■■
+  4.753 [23]	|■■■
+  5.533 [11]	|■■
+  6.313 [0]	|
+  7.094 [0]	|
+  7.874 [7]	|■
+
+
+Latency distribution:
+  10%% in 0.0802 secs
+  25%% in 0.1019 secs
+  50%% in 0.4724 secs
+  75%% in 2.3530 secs
+  90%% in 3.2835 secs
+  95%% in 4.2885 secs
+  99%% in 7.3919 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.0187 secs, 0.0000 secs, 0.2516 secs
+  DNS-lookup:	0.0073 secs, 0.0000 secs, 0.0530 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0004 secs
+  resp wait:	1.1679 secs, 0.0700 secs, 7.4260 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0005 secs
+
+Status code distribution:
+  [200]	483 responses
+
+Error distribution:
+  [91]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+--- Full output for c=75 ---
+
+  0     | 100         | 61.4901 | N/A      | N/A      | N/A      |   [43]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+Summary:
+  Total:	24.8495 secs
+  Slowest:	7.4646 secs
+  Fastest:	0.0693 secs
+  Average:	0.9582 secs
+  Requests/sec:	61.4901
+  
+  Total data:	595321 bytes
+  Size/request:	400 bytes
+
+Response time histogram:
+  0.069 [1]	|
+  0.809 [1064]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  1.548 [132]	|■■■■■
+  2.288 [65]	|■■
+  3.027 [22]	|■
+  3.767 [91]	|■■■
+  4.506 [37]	|■
+  5.246 [31]	|■
+  5.986 [18]	|■
+  6.725 [0]	|
+  7.465 [24]	|■
+
+
+Latency distribution:
+  10%% in 0.0734 secs
+  25%% in 0.0782 secs
+  50%% in 0.2125 secs
+  75%% in 1.1258 secs
+  90%% in 3.4811 secs
+  95%% in 4.4954 secs
+  99%% in 7.2807 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.0081 secs, 0.0000 secs, 0.2076 secs
+  DNS-lookup:	0.0004 secs, 0.0000 secs, 0.0080 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0006 secs
+  resp wait:	0.9288 secs, 0.0692 secs, 7.4645 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0036 secs
+
+Status code distribution:
+  [200]	1485 responses
+
+Error distribution:
+  [43]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+--- Full output for c=100 ---
+
+  0     | 200         | 30.6352 | N/A      | N/A      | N/A      |   [258]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+Summary:
+  Total:	24.9386 secs
+  Slowest:	9.9236 secs
+  Fastest:	0.0702 secs
+  Average:	2.7410 secs
+  Requests/sec:	30.6352
+  
+  Total data:	202840 bytes
+  Size/request:	400 bytes
+
+Response time histogram:
+  0.070 [1]	|
+  1.056 [155]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  2.041 [92]	|■■■■■■■■■■■■■■■■■■■■■■■■
+  3.026 [39]	|■■■■■■■■■■
+  4.012 [66]	|■■■■■■■■■■■■■■■■■
+  4.997 [39]	|■■■■■■■■■■
+  5.982 [50]	|■■■■■■■■■■■■■
+  6.968 [10]	|■■■
+  7.953 [38]	|■■■■■■■■■■
+  8.938 [14]	|■■■■
+  9.924 [2]	|■
+
+
+Latency distribution:
+  10%% in 0.0948 secs
+  25%% in 0.4413 secs
+  50%% in 2.1144 secs
+  75%% in 4.3771 secs
+  90%% in 7.2270 secs
+  95%% in 7.4497 secs
+  99%% in 8.5426 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.0877 secs, 0.0000 secs, 3.1946 secs
+  DNS-lookup:	0.0027 secs, 0.0000 secs, 0.0149 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0004 secs
+  resp wait:	2.1906 secs, 0.0701 secs, 7.4675 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0011 secs
+
+Status code distribution:
+  [200]	506 responses
+
+Error distribution:
+  [258]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+--- Full output for c=200 ---
+
+  0     | 500         | 65.8663 | N/A      | N/A      | N/A      |   [527]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+  [1]	Get "https://loadtest.tunnels.pratheepsri.me/": read tcp 10.10.77.127:39790->141.148.208.164:443: read: connection reset by peer
+  [1]	Get "https://loadtest.tunnels.pratheepsri.me/": read tcp 10.10.77.127:40212->141.148.208.164:443: read: connection reset by peer
+  [1]	Get "https://loadtest.tunnels.pratheepsri.me/": read tcp 10.10.77.127:40544->141.148.208.164:443: read: connection reset by peer
+
+Summary:
+  Total:	24.9597 secs
+  Slowest:	9.9081 secs
+  Fastest:	0.0703 secs
+  Average:	3.6849 secs
+  Requests/sec:	65.8663
+  
+  Total data:	446591 bytes
+  Size/request:	400 bytes
+
+Response time histogram:
+  0.070 [1]	|
+  1.054 [329]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  2.038 [114]	|■■■■■■■■■■■■■■
+  3.022 [74]	|■■■■■■■■■
+  4.005 [56]	|■■■■■■■
+  4.989 [76]	|■■■■■■■■■
+  5.973 [117]	|■■■■■■■■■■■■■■
+  6.957 [193]	|■■■■■■■■■■■■■■■■■■■■■■■
+  7.941 [127]	|■■■■■■■■■■■■■■■
+  8.924 [20]	|■■
+  9.908 [7]	|■
+
+
+Latency distribution:
+  10%% in 0.2735 secs
+  25%% in 0.8778 secs
+  50%% in 3.6146 secs
+  75%% in 6.2988 secs
+  90%% in 7.3925 secs
+  95%% in 7.5648 secs
+  99%% in 8.8568 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.5382 secs, 0.0000 secs, 5.9944 secs
+  DNS-lookup:	0.0081 secs, 0.0000 secs, 0.0704 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0029 secs
+  resp wait:	2.1047 secs, 0.0700 secs, 7.5505 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0010 secs
+
+Status code distribution:
+  [200]	1114 responses
+
+Error distribution:
+  [527]	Get "https://loadtest.tunnels.pratheepsri.me/": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+  [1]	Get "https://loadtest.tunnels.pratheepsri.me/": read tcp 10.10.77.127:39790->141.148.208.164:443: read: connection reset by peer
+  [1]	Get "https://loadtest.tunnels.pratheepsri.me/": read tcp 10.10.77.127:40212->141.148.208.164:443: read: connection reset by peer
+  [1]	Get "https://loadtest.tunnels.pratheepsri.me/": read tcp 10.10.77.127:40544->141.148.208.164:443: read: connection reset by peer
+
+--- Full output for c=500 ---
+
+
+=================================================================
+  Done. Raw CSVs: loadtest/results
+  Run: python3 loadtest/analyze.py  to generate plots
+=================================================================

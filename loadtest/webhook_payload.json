@@ -1,0 +1,40 @@
+{
+  "event": "payment_intent.succeeded",
+  "id": "evt_3N4ABC2eZvKYlo2C1g7XYZ99",
+  "object": "event",
+  "api_version": "2023-10-16",
+  "created": 1698000000,
+  "livemode": true,
+  "data": {
+    "object": {
+      "id": "pi_3N4ABC2eZvKYlo2C1g7XYZ99",
+      "object": "payment_intent",
+      "amount": 4900,
+      "amount_received": 4900,
+      "currency": "usd",
+      "status": "succeeded",
+      "customer": "cus_O123456789ABCD",
+      "description": "TunnelForge Pro Subscription (Monthly)",
+      "metadata": {
+        "order_id": "ord_2026_10_04_001",
+        "user_email": "developer@tunnelforge.dev",
+        "cluster": "oracle-fra-1"
+      },
+      "payment_method_types": [
+        "card"
+      ],
+      "charges": {
+        "object": "list",
+        "total_count": 1,
+        "data": [
+          {
+            "id": "ch_3N4ABC2eZvKYlo2C1g7XYZ99",
+            "amount": 4900,
+            "captured": true,
+            "receipt_url": "https://pay.stripe.com/receipts/acct_123/ch_123/rcpt_123"
+          }
+        ]
+      }
+    }
+  }
+}

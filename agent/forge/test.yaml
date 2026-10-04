@@ -7,3 +7,7 @@ tunnels:
     local: localhost:5173
     capture: true
     capture_limit: 200
+  loadtest:
+    local: localhost:8080
+    capture: true
+    capture_limit: 200

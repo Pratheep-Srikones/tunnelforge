@@ -1,0 +1,48 @@
+
+Summary:
+  Total:	24.0679 secs
+  Slowest:	8.6456 secs
+  Fastest:	0.0710 secs
+  Average:	1.4646 secs
+  Requests/sec:	39.5963
+  
+  Total data:	1458060 bytes
+  Size/request:	1612 bytes
+
+Response time histogram:
+  0.071 [1]	|
+  0.928 [579]	|■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+  1.786 [103]	|■■■■■■■
+  2.643 [54]	|■■■■
+  3.501 [39]	|■■■
+  4.358 [18]	|■
+  5.216 [14]	|■
+  6.073 [30]	|■■
+  6.931 [10]	|■
+  7.788 [42]	|■■■
+  8.646 [14]	|■
+
+
+Latency distribution:
+  10%% in 0.1048 secs
+  25%% in 0.1529 secs
+  50%% in 0.4380 secs
+  75%% in 1.5166 secs
+  90%% in 5.2651 secs
+  95%% in 7.3319 secs
+  99%% in 7.9721 secs
+
+Details (average, fastest, slowest):
+  DNS+dialup:	0.0114 secs, 0.0000 secs, 0.4919 secs
+  DNS-lookup:	0.0020 secs, 0.0000 secs, 0.0247 secs
+  req write:	0.0000 secs, 0.0000 secs, 0.0006 secs
+  resp wait:	1.3895 secs, 0.0709 secs, 7.7663 secs
+  resp read:	0.0001 secs, 0.0000 secs, 0.0011 secs
+
+Status code distribution:
+  [200]	904 responses
+
+Error distribution:
+  [49]	Post "https://loadtest.tunnels.pratheepsri.me/webhook": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+--- Raw Output c=100 ---
